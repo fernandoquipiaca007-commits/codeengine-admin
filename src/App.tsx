@@ -16,6 +16,7 @@ import { ProductPageBuilder } from './pages/ProductPageBuilder';
 import FeaturedProducts from './pages/FeaturedProducts';
 import PushNotifications from './pages/PushNotifications';
 import ReferralDashboard from './pages/ReferralDashboard';
+import LevelRewards from './pages/LevelRewards';
 
 function App() {
   return (
@@ -111,6 +112,15 @@ function App() {
                         element={
                           <ProtectedRoute requirePermission="can_access_analytics">
                             <ReferralDashboard />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="/rewards"
+                        element={
+                          <ProtectedRoute requirePermission="can_access_analytics">
+                            <LevelRewards />
                           </ProtectedRoute>
                         }
                       />
