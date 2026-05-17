@@ -1,0 +1,267 @@
+import type { ReactNode } from 'react';
+import { useAdminAnalytics } from '../hooks/useAdminAnalytics';
+import { formatCurrency } from '../lib/analytics';
+
+function StatCard({
+  label,
+  value,
+  loading,
+  icon,
+}: {
+  label: string;
+  value: string;
+  loading: boolean;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="bg-white overflow-hidden shadow rounded-lg">
+      <div className="p-5">
+        <div className="flex items-center">
+          <div className="flex-shrink-0 text-primary-600">{icon}</div>
+          <div className="ml-5 w-0 flex-1">
+            <dl>
+              <dt className="text-sm font-medium text-gray-500 truncate">{label}</dt>
+              <dd className="text-lg font-semibold text-gray-900">
+                {loading ? '...' : value}
+              </dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RevenueChart({
+  loading,
+  revenueByDay,
+}: {
+  loading: boolean;
+  revenueByDay: { month: string; revenue: number }[];
+}) {
+  const max = Math.max(...revenueByDay.map((d) => d.revenue), 1);
+
+  if (loading) {
+    return (
+      <div className="h-64 flex items-center justify-center">
+        <p className="text-gray-500">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (revenueByDay.every((d) => d.revenue === 0)) {
+    return (
+      <div className="h-64 flex items-center justify-center border border-dashed border-gray-200 rounded-lg">
+        <p className="text-gray-500 text-sm">Sem receita nos últimos 30 dias</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-64 flex items-end gap-1 pt-4">
+      {revenueByDay.map((day) => {
+        const height = Math.max(4, (day.revenue / max) * 100);
+        return (
+          <div
+            key={day.month}
+            className="flex-1 flex flex-col items-center justify-end group"
+            title={`${day.month}: ${formatCurrency(day.revenue)}`}
+          >
+            <div
+              className="w-full rounded-t bg-primary-500/80 group-hover:bg-primary-600 transition-colors"
+              style={{ height: `${height}%` }}
+            />
+            <span className="text-[9px] text-gray-400 mt-1 rotate-0 truncate w-full text-center">
+              {day.month.slice(8)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function Analytics() {
+  const { data, loading, error, lastUpdated } = useAdminAnalytics();
+
+  return (
+    <div className="p-4 sm:p-6 md:p-8 overflow-x-hidden">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Análises</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Visualize análises e relatórios abrangentes da sua loja
+          </p>
+        </div>
+        {lastUpdated && (
+          <p className="text-xs text-gray-500">
+            Atualizado em tempo real · {lastUpdated.toLocaleTimeString('pt-BR')}
+          </p>
+        )}
+      </div>
+
+      {error && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {error}
+        </div>
+      )}
+
+      {/* Primary stats — existing cards wired */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-6">
+        <StatCard
+          label="Taxa de Conversão"
+          value={`${data.conversionRate.toFixed(1)}%`}
+          loading={loading}
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Total de Downloads"
+          value={String(data.totalDownloads)}
+          loading={loading}
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Valor Médio do Pedido"
+          value={formatCurrency(data.avgOrderValue)}
+          loading={loading}
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+        />
+      </div>
+
+      {/* Extended KPIs — same design system */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <StatCard label="Total de Vendas" value={String(data.totalSales)} loading={loading} icon={<span className="text-lg font-bold">#</span>} />
+        <StatCard label="Receita Total" value={formatCurrency(data.totalRevenue)} loading={loading} icon={<span className="text-lg font-bold">R$</span>} />
+        <StatCard label="Total de Membros" value={String(data.totalMembers)} loading={loading} icon={<span className="text-lg font-bold">@</span>} />
+        <StatCard label="Vendas Hoje" value={String(data.salesToday)} loading={loading} icon={<span className="text-lg font-bold">↑</span>} />
+        <StatCard label="Receita Hoje" value={formatCurrency(data.revenueToday)} loading={loading} icon={<span className="text-lg font-bold">$</span>} />
+        <StatCard label="Visitantes Hoje" value={String(data.visitorsToday)} loading={loading} icon={<span className="text-lg font-bold">◎</span>} />
+        <StatCard label="Favoritos" value={String(data.totalFavorites)} loading={loading} icon={<span className="text-lg font-bold">♥</span>} />
+        <StatCard
+          label="Notificações"
+          value={`${data.unreadNotifications} / ${data.totalNotifications}`}
+          loading={loading}
+          icon={<span className="text-lg font-bold">!</span>}
+        />
+      </div>
+
+      {data.topProductTitle && (
+        <p className="mb-4 text-sm text-gray-600">
+          Produto mais vendido (30 dias):{' '}
+          <span className="font-semibold text-gray-900">{data.topProductTitle}</span>
+        </p>
+      )}
+
+      {/* Charts — existing layout, real data */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-8">
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Receita ao Longo do Tempo</h2>
+          <RevenueChart loading={loading} revenueByDay={data.revenueByDay} />
+        </div>
+
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Produtos Mais Vendidos</h2>
+          {loading ? (
+            <p className="text-gray-500 text-sm">Carregando...</p>
+          ) : data.topProducts.length === 0 ? (
+            <div className="h-64 flex items-center justify-center border border-dashed border-gray-200 rounded-lg">
+              <p className="text-gray-500 text-sm">Nenhuma venda registrada</p>
+            </div>
+          ) : (
+            <ul className="space-y-3 max-h-64 overflow-y-auto">
+              {data.topProducts.map((product, index) => (
+                <li
+                  key={product.product_id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {index + 1}. {product.product_title}
+                    </p>
+                    <p className="text-xs text-gray-500">{product.sales_count} vendas</p>
+                  </div>
+                  <span className="text-sm font-semibold text-primary-700 whitespace-nowrap">
+                    {formatCurrency(product.revenue)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Recent orders */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Últimos Pedidos</h2>
+        {loading ? (
+          <p className="text-gray-500 text-sm">Carregando...</p>
+        ) : data.recentOrders.length === 0 ? (
+          <p className="text-gray-500 text-sm">Nenhum pedido encontrado</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead>
+                <tr>
+                  <th className="py-2 text-left font-medium text-gray-500">Produto</th>
+                  <th className="py-2 text-left font-medium text-gray-500">Membro</th>
+                  <th className="py-2 text-left font-medium text-gray-500">Valor</th>
+                  <th className="py-2 text-left font-medium text-gray-500">Status</th>
+                  <th className="py-2 text-left font-medium text-gray-500">Data</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {data.recentOrders.map((order) => (
+                  <tr key={order.id}>
+                    <td className="py-3 pr-4 text-gray-900">{order.product_title}</td>
+                    <td className="py-3 pr-4 text-gray-600">{order.member_email}</td>
+                    <td className="py-3 pr-4 font-medium text-gray-900">
+                      {order.is_free ? (
+                        <span className="text-green-600 font-semibold">Grátis</span>
+                      ) : (
+                        formatCurrency(order.amount_paid)
+                      )}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          order.payment_status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : order.payment_status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : order.payment_status === 'refunded'
+                                ? 'bg-orange-100 text-orange-800'
+                                : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {order.payment_status === 'completed' ? 'concluído'
+                          : order.payment_status === 'pending' ? 'pendente'
+                          : order.payment_status === 'refunded' ? 'reembolsado'
+                          : order.payment_status === 'failed' ? 'falhou'
+                          : order.payment_status}
+                      </span>
+                    </td>
+                    <td className="py-3 text-gray-500">
+                      {new Date(order.purchase_date).toLocaleString('pt-BR')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
