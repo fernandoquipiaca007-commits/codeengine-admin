@@ -17,6 +17,7 @@ import FeaturedProducts from './pages/FeaturedProducts';
 import PushNotifications from './pages/PushNotifications';
 import ReferralDashboard from './pages/ReferralDashboard';
 import LevelRewards from './pages/LevelRewards';
+import FastPayOrders from './pages/FastPayOrders';
 
 function App() {
   return (
@@ -121,6 +122,15 @@ function App() {
                         element={
                           <ProtectedRoute requirePermission="can_access_analytics">
                             <LevelRewards />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="/fastpay"
+                        element={
+                          <ProtectedRoute requirePermission="can_manage_coupons">
+                            <FastPayOrders />
                           </ProtectedRoute>
                         }
                       />

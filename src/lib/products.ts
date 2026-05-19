@@ -4,7 +4,8 @@ import {
   deleteFile, 
   generateProductFilePath, 
   STORAGE_BUCKETS,
-  extractStoragePathFromUrl 
+  extractStoragePathFromUrl,
+  generatePublicUrl
 } from './storage';
 import { Product } from '../types/admin';
 import { ProductFormData } from '../components/products/ProductForm';
@@ -95,15 +96,16 @@ export async function createProduct(formData: ProductFormData): Promise<CreatePr
         video_storage_path: videoStoragePath,
         file_storage_path: fileStoragePath,
         // Keep old columns for backward compatibility (will be deprecated)
-        cover_url: coverStoragePath,
-        preview_url: previewStoragePath,
-        video_url: videoStoragePath,
+        cover_url: generatePublicUrl(STORAGE_BUCKETS.PRODUCT_COVERS.name, coverStoragePath),
+        preview_url: previewStoragePath ? generatePublicUrl(STORAGE_BUCKETS.PRODUCT_PREVIEWS.name, previewStoragePath) : null,
+        video_url: videoStoragePath ? generatePublicUrl(STORAGE_BUCKETS.PRODUCT_VIDEOS.name, videoStoragePath) : null,
         storage_url: fileStoragePath,
         tags: formData.tags,
         cta_text: formData.cta_text,
         status: formData.status,
         product_type: formData.product_type || (formData.is_course_mode ? 'course' : 'file'),
         is_free: formData.is_free ?? false,
+        fastpay_link: formData.fastpay_link?.trim() || null,
       })
       .select()
       .single();
@@ -130,8 +132,8 @@ export async function createProduct(formData: ProductFormData): Promise<CreatePr
           title: formData.title,
           description: formData.description,
           cta_text: formData.cta_text,
-          cover_url: coverStoragePath,
-          preview_url: previewStoragePath || undefined,
+          cover_url: generatePublicUrl(STORAGE_BUCKETS.PRODUCT_COVERS.name, coverStoragePath),
+          preview_url: previewStoragePath ? generatePublicUrl(STORAGE_BUCKETS.PRODUCT_PREVIEWS.name, previewStoragePath) : undefined,
           storage_url: fileStoragePath,
         };
       }
@@ -249,15 +251,16 @@ export async function updateProduct(
         video_storage_path: videoStoragePath,
         file_storage_path: fileStoragePath,
         // Keep old columns for backward compatibility
-        cover_url: coverStoragePath,
-        preview_url: previewStoragePath,
-        video_url: videoStoragePath,
+        cover_url: coverStoragePath.startsWith('http') ? coverStoragePath : generatePublicUrl(STORAGE_BUCKETS.PRODUCT_COVERS.name, coverStoragePath),
+        preview_url: previewStoragePath ? (previewStoragePath.startsWith('http') ? previewStoragePath : generatePublicUrl(STORAGE_BUCKETS.PRODUCT_PREVIEWS.name, previewStoragePath)) : null,
+        video_url: videoStoragePath ? (videoStoragePath.startsWith('http') ? videoStoragePath : generatePublicUrl(STORAGE_BUCKETS.PRODUCT_VIDEOS.name, videoStoragePath)) : null,
         storage_url: fileStoragePath,
         tags: formData.tags,
         cta_text: formData.cta_text,
         status: formData.status,
         product_type: formData.product_type || (formData.is_course_mode ? 'course' : 'file'),
         is_free: formData.is_free ?? false,
+        fastpay_link: formData.fastpay_link?.trim() || null,
       })
       .eq('id', productId)
       .select()

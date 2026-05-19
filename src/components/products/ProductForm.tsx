@@ -19,6 +19,7 @@ export interface ProductFormData {
   category_id: string;
   price: number;
   stripe_price_id: string;
+  fastpay_link?: string;
   tags: string[];
   cta_text: string;
   status: 'draft' | 'active' | 'archived';
@@ -44,6 +45,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     category_id: product?.category_id || '',
     price: product?.price || 0,
     stripe_price_id: product?.stripe_price_id || '',
+    fastpay_link: (product as any)?.fastpay_link || '',
     tags: product?.tags || [],
     cta_text: product?.cta_text || 'Comprar Agora',
     status: product?.status || 'draft',
@@ -305,6 +307,44 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           <p className="mt-1 text-sm text-red-600">{errors.stripe_price_id}</p>
         )}
       </div>
+
+      {/* FastPay Link */}
+      {!formData.is_free && (
+        <div>
+          <label htmlFor="fastpay_link" className="block text-sm font-medium text-gray-700">
+            Link FastPay
+            <span className="ml-2 text-xs font-normal text-gray-400">(opcional — habilita pagamento local Angola)</span>
+          </label>
+          <div className="mt-1 relative">
+            <input
+              type="url"
+              id="fastpay_link"
+              value={formData.fastpay_link || ''}
+              onChange={(e) => setFormData({ ...formData, fastpay_link: e.target.value })}
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm pr-10"
+              placeholder="https://fastpay.ao/..."
+            />
+            {formData.fastpay_link && (
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, fastpay_link: '' })}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                title="Remover link"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {formData.fastpay_link && !/^https?:\/\//.test(formData.fastpay_link) && (
+            <p className="mt-1 text-xs text-red-500">URL inválida. Deve começar com http:// ou https://</p>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            Quando preenchido, o botão "Comprar Agora" oferecerá Stripe e FastPay como opções de pagamento.
+          </p>
+        </div>
+      )}
 
       {/* Tags */}
       <div>
