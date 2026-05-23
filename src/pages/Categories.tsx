@@ -91,7 +91,7 @@ export default function Categories() {
         setCategories(categories.filter((c) => c.id !== categoryToDelete.id));
         setShowDeleteModal(false);
         setCategoryToDelete(null);
-        notifySuccess('categorySaved'); // Using generic categorySaved for simplicity, or we could add categoryDeleted to SUCCESS
+        notifySuccess('categoryDeleted');
       } else {
         notifyError(result.error, 'delete', 'categories');
       }

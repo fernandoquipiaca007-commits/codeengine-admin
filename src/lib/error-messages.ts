@@ -176,5 +176,6 @@ export const SUCCESS = {
   notificationSent: 'Notificação enviada com sucesso.',
   campaignActivated: 'Campanha ativada com sucesso.',
   categorySaved: 'Categoria guardada com sucesso.',
+  categoryDeleted: 'Categoria removida com sucesso.',
   newsSaved: 'Notícia publicada com sucesso.',
 } as const;

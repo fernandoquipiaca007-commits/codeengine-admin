@@ -17,11 +17,9 @@ import { supabaseAdmin } from '../lib/supabase-admin';
 import { executeWithRetry } from '../lib/supabase-request';
 import { FAQManager } from '../components/products/FAQManager';
 import { VideoManager } from '../components/products/VideoManager';
-import { BenefitsManager } from '../components/products/BenefitsManager';
 import { BonusesManager } from '../components/products/BonusesManager';
 import { CouponsManager } from '../components/products/CouponsManager';
 import { CampaignsManager } from '../components/products/CampaignsManager';
-import { CustomSectionsManager } from '../components/products/CustomSectionsManager';
 import { MediaGallery } from '../components/products/MediaGallery';
 
 interface Product {
