@@ -3,10 +3,12 @@ import { Category } from '../types/admin';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../lib/categories';
 import CategoryForm, { CategoryFormData } from '../components/categories/CategoryForm';
 import CategoryList from '../components/categories/CategoryList';
+import { useToast } from '../contexts/ToastContext';
 
 type ViewMode = 'list' | 'create' | 'edit';
 
 export default function Categories() {
+  const { notifyError, notifySuccess } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -24,20 +26,12 @@ export default function Categories() {
     try {
       const { data, error } = await getCategories();
       if (error) {
-        console.error('Error loading categories:', error);
-        alert('❌ Erro ao carregar categorias:\n\n' +
-              '• Não foi possível carregar a lista de categorias\n' +
-              '• Verifique sua conexão com o Supabase\n\n' +
-              `Detalhes: ${error.message}`);
+        notifyError(error, 'load', 'categories');
       } else {
         setCategories(data || []);
       }
     } catch (error: any) {
-      console.error('Error loading categories:', error);
-      alert('❌ Erro ao carregar categorias:\n\n' +
-            '• Ocorreu um erro inesperado\n' +
-            '• Tente recarregar a página\n\n' +
-            `Detalhes: ${error.message}`);
+      notifyError(error, 'load', 'categories');
     } finally {
       setLoading(false);
     }
@@ -49,23 +43,9 @@ export default function Categories() {
     if (result.success && result.category) {
       setCategories([...categories, result.category].sort((a, b) => a.display_order - b.display_order));
       setViewMode('list');
-      alert('✅ Categoria criada com sucesso!\n\n' +
-            `📁 "${result.category.name}" foi adicionada ao sistema`);
+      notifySuccess('categorySaved');
     } else {
-      let errorMessage = '❌ Erro ao criar categoria:\n\n';
-      
-      if (result.error?.includes('duplicate') || result.error?.includes('unique')) {
-        errorMessage += '• Já existe uma categoria com este nome ou slug\n';
-        errorMessage += '• Solução: Use um nome diferente';
-      } else if (result.error?.includes('display_order')) {
-        errorMessage += '• Ordem de exibição inválida\n';
-        errorMessage += '• Solução: Use um número positivo';
-      } else {
-        errorMessage += `• ${result.error}\n`;
-        errorMessage += '\n💡 Dica: Verifique todos os campos obrigatórios';
-      }
-      
-      alert(errorMessage);
+      notifyError(result.error, 'save', 'categories');
       throw new Error(result.error);
     }
   }
@@ -83,23 +63,9 @@ export default function Categories() {
       );
       setViewMode('list');
       setSelectedCategory(null);
-      alert('✅ Categoria atualizada com sucesso!\n\n' +
-            `📁 "${result.category.name}" foi atualizada`);
+      notifySuccess('categorySaved');
     } else {
-      let errorMessage = '❌ Erro ao atualizar categoria:\n\n';
-      
-      if (result.error?.includes('duplicate') || result.error?.includes('unique')) {
-        errorMessage += '• Já existe outra categoria com este nome ou slug\n';
-        errorMessage += '• Solução: Use um nome diferente';
-      } else if (result.error?.includes('not found')) {
-        errorMessage += '• Categoria não encontrada no banco de dados\n';
-        errorMessage += '• Solução: Recarregue a página e tente novamente';
-      } else {
-        errorMessage += `• ${result.error}\n`;
-        errorMessage += '\n💡 Dica: Verifique todos os campos obrigatórios';
-      }
-      
-      alert(errorMessage);
+      notifyError(result.error, 'save', 'categories');
       throw new Error(result.error);
     }
   }
@@ -125,30 +91,12 @@ export default function Categories() {
         setCategories(categories.filter((c) => c.id !== categoryToDelete.id));
         setShowDeleteModal(false);
         setCategoryToDelete(null);
-        alert('✅ Categoria excluída com sucesso!\n\n' +
-              `🗑️ "${categoryToDelete.name}" foi removida do sistema`);
+        notifySuccess('categorySaved'); // Using generic categorySaved for simplicity, or we could add categoryDeleted to SUCCESS
       } else {
-        let errorMessage = '❌ Erro ao excluir categoria:\n\n';
-        
-        if (result.error?.includes('products') || result.error?.includes('foreign key')) {
-          errorMessage += '• Esta categoria possui produtos associados\n';
-          errorMessage += '• Não é possível excluir categorias com produtos\n\n';
-          errorMessage += '📋 Solução:\n';
-          errorMessage += '1. Mova os produtos para outra categoria\n';
-          errorMessage += '2. Ou exclua os produtos primeiro\n';
-          errorMessage += '3. Depois exclua a categoria';
-        } else {
-          errorMessage += `• ${result.error}`;
-        }
-        
-        alert(errorMessage);
+        notifyError(result.error, 'delete', 'categories');
       }
     } catch (error: any) {
-      console.error('Error deleting category:', error);
-      alert('❌ Erro ao excluir categoria:\n\n' +
-            '• Ocorreu um erro inesperado\n' +
-            '• A categoria não foi excluída\n\n' +
-            `Detalhes: ${error.message}`);
+      notifyError(error, 'delete', 'categories');
     } finally {
       setDeleteLoading(false);
     }
