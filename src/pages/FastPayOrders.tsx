@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import {
   Clock, CheckCircle, XCircle, Search, Filter,
-  RefreshCw, Loader2, Eye, TrendingUp, DollarSign,
+  RefreshCw, Loader2, Eye, DollarSign,
   Package, AlertCircle, Settings, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 import { OrderDetailModal } from '../components/fastpay/OrderDetailModal';

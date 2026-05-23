@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, ChevronUp, ChevronDown, GripVertical, Video } from 'lucide-react';
+import { Trash2, ChevronUp, ChevronDown, GripVertical, Video } from 'lucide-react';
 import {
   CourseModule,
   CourseLesson,

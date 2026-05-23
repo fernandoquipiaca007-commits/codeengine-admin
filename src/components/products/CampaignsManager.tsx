@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { supabaseAdmin } from '../../lib/supabase-admin';
 
 interface Campaign {
@@ -22,7 +22,6 @@ interface CampaignsManagerProps {
 export function CampaignsManager({ productId }: CampaignsManagerProps) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [newCampaign, setNewCampaign] = useState({
     name: '',
     description: '',
@@ -126,12 +125,6 @@ export function CampaignsManager({ productId }: CampaignsManagerProps) {
     }
   }
 
-  function isActive(campaign: Campaign): boolean {
-    const now = new Date();
-    const start = new Date(campaign.start_date);
-    const end = new Date(campaign.end_date);
-    return campaign.is_active && now >= start && now <= end;
-  }
 
   function getStatus(campaign: Campaign): { text: string; color: string } {
     const now = new Date();

@@ -49,14 +49,14 @@ export default function FeaturedProducts() {
   async function load() {
     setLoading(true);
     try {
-      const [featuredRes, productsRes] = await Promise.all([
+      const [featuredRes, productsRes] = await (Promise.all([
         fetchFeaturedProducts(),
         getProducts({ status: 'active' }),
-      ]);
+      ]) as unknown as Promise<[{ data: FeaturedProductRow[] | null; error: any }, { data: Product[] | null; error: any }] >);
       if (featuredRes.error) throw featuredRes.error;
       if (productsRes.error) throw productsRes.error;
 
-      setItems((featuredRes.data as FeaturedProductRow[]) || []);
+      setItems(featuredRes.data || []);
       setProducts(productsRes.data || []);
     } catch (err) {
       notifyError(err, 'load', 'featured-products');
@@ -164,11 +164,11 @@ export default function FeaturedProducts() {
         coverUrl = selectedProduct.cover_url;
       }
 
-      const { error } = await upsertFeaturedProduct({
+      const { error } = (await (upsertFeaturedProduct({
         id: editing?.id,
         ...form,
-        custom_cover: coverUrl || null,
-      });
+        custom_cover: coverUrl || '',
+      }) as unknown as Promise<{ error: any }>));
       if (error) throw error;
 
       notifySuccess('featuredSaved');
@@ -186,7 +186,7 @@ export default function FeaturedProducts() {
   async function handleDelete(id: string) {
     if (!confirm('Remover este destaque da Home?')) return;
     try {
-      const { error } = await deleteFeaturedProduct(id);
+      const { error } = (await (deleteFeaturedProduct(id) as unknown as Promise<{ error: any }>));
       if (error) throw error;
       notifySuccess('featuredDeleted');
       await load();

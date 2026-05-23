@@ -178,9 +178,10 @@ export async function updateProduct(
         formData.cover_file
       );
       // Delete old cover
-      if (existingProduct.cover_storage_path || existingProduct.cover_url) {
+      const oldCover = existingProduct.cover_storage_path || existingProduct.cover_url;
+      if (oldCover) {
         await deleteOldFile(
-          existingProduct.cover_storage_path || existingProduct.cover_url, 
+          oldCover,
           STORAGE_BUCKETS.PRODUCT_COVERS.name
         );
       }
@@ -195,9 +196,10 @@ export async function updateProduct(
         formData.preview_file
       );
       // Delete old preview
-      if (existingProduct.preview_storage_path || existingProduct.preview_url) {
+      const oldPreview = existingProduct.preview_storage_path || existingProduct.preview_url;
+      if (oldPreview) {
         await deleteOldFile(
-          existingProduct.preview_storage_path || existingProduct.preview_url, 
+          oldPreview,
           STORAGE_BUCKETS.PRODUCT_PREVIEWS.name
         );
       }
@@ -212,9 +214,10 @@ export async function updateProduct(
         formData.video_file
       );
       // Delete old video
-      if (existingProduct.video_storage_path || existingProduct.video_url) {
+      const oldVideo = existingProduct.video_storage_path || existingProduct.video_url;
+      if (oldVideo) {
         await deleteOldFile(
-          existingProduct.video_storage_path || existingProduct.video_url, 
+          oldVideo,
           STORAGE_BUCKETS.PRODUCT_VIDEOS.name
         );
       }
@@ -229,9 +232,10 @@ export async function updateProduct(
         formData.product_file
       );
       // Delete old product file
-      if (existingProduct.file_storage_path || existingProduct.storage_url) {
+      const oldFile = existingProduct.file_storage_path || existingProduct.storage_url;
+      if (oldFile) {
         await deleteOldFile(
-          existingProduct.file_storage_path || existingProduct.storage_url, 
+          oldFile,
           STORAGE_BUCKETS.EBOOKS_PRIVATE.name
         );
       }

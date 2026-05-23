@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase-admin';
-import { uploadFile, STORAGE_BUCKETS, generateProductFilePath } from './storage';
+import { uploadFile, STORAGE_BUCKETS } from './storage';
 import { AppLocale, ProductTranslationFields } from '../types/locale';
 
 export async function upsertProductTranslations(

@@ -456,7 +456,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             label="Arquivo de Preview"
             accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
             maxSize={10 * 1024 * 1024}
-            currentFile={product?.preview_url}
+            currentFile={product?.preview_url || undefined}
             onFileSelect={(file) => setFormData({ ...formData, preview_file: file })}
             helpText="Max 10MB • JPG, PNG, PDF"
           />
@@ -466,7 +466,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             label="Vídeo Promocional"
             accept="video/mp4,video/webm,video/ogg,.mp4,.webm,.ogg"
             maxSize={100 * 1024 * 1024}
-            currentFile={product?.video_url}
+            currentFile={product?.video_url || undefined}
             onFileSelect={(file) => setFormData({ ...formData, video_file: file })}
             helpText="Max 100MB • MP4, WebM, OGG"
           />
