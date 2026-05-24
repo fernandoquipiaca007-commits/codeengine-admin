@@ -45,13 +45,13 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, context: string): Promise<T> {
+function withTimeout<T>(promise: any, timeoutMs: number, context: string): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`${context}: request timed out after ${timeoutMs}ms`));
     }, timeoutMs);
 
-    promise
+    Promise.resolve(promise)
       .then((value) => {
         clearTimeout(timer);
         resolve(value);
@@ -88,7 +88,7 @@ export async function executeWithRetry<T>(
     }
 
     try {
-      const result = await withTimeout(operation(), timeoutMs, context);
+      const result = await withTimeout<SupabaseResult<T>>(operation(), timeoutMs, context);
 
       if (!result.error) {
         if (result.data === null) {
