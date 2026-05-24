@@ -1,5 +1,17 @@
 import { useState, useRef } from 'react';
-import { Upload, File, X, CheckCircle, AlertCircle } from 'lucide-react';
+import {
+  Upload as LucideUpload,
+  File as LucideFile,
+  X as LucideX,
+  CheckCircle as LucideCheckCircle,
+  AlertCircle as LucideAlertCircle
+} from 'lucide-react';
+
+const Upload = LucideUpload as any;
+const File = LucideFile as any;
+const X = LucideX as any;
+const CheckCircle = LucideCheckCircle as any;
+const AlertCircle = LucideAlertCircle as any;
 
 interface CompactFileUploadProps {
   label: string;

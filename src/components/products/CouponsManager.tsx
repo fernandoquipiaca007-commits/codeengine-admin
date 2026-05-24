@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Copy, Check } from 'lucide-react';
+import {
+  Plus as LucidePlus,
+  Trash2 as LucideTrash2,
+  Copy as LucideCopy,
+  Check as LucideCheck
+} from 'lucide-react';
+
+const Plus = LucidePlus as any;
+const Trash2 = LucideTrash2 as any;
+const Copy = LucideCopy as any;
+const Check = LucideCheck as any;
 import { supabaseAdmin } from '../../lib/supabase-admin';
 
 interface Coupon {
@@ -177,7 +187,7 @@ export function CouponsManager({ productId }: CouponsManagerProps) {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="percentage">Porcentagem (%)</option>
-              <option value="fixed">Valor Fixo (R$)</option>
+              <option value="fixed">Valor Fixo ($)</option>
             </select>
           </div>
 
@@ -289,7 +299,7 @@ export function CouponsManager({ productId }: CouponsManagerProps) {
                         <span className="font-semibold">Desconto:</span>{' '}
                         {coupon.discount_type === 'percentage'
                           ? `${coupon.discount_value}%`
-                          : `R$ ${coupon.discount_value.toFixed(2)}`}
+                          : `$ ${coupon.discount_value.toFixed(2)}`}
                       </p>
                       
                       {coupon.max_uses && (

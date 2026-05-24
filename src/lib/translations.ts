@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase-admin';
-import { uploadFile, STORAGE_BUCKETS, generateProductFilePath } from './storage';
+import { uploadFile, STORAGE_BUCKETS } from './storage';
 import { AppLocale, ProductTranslationFields } from '../types/locale';
 
 export async function upsertProductTranslations(
@@ -34,6 +34,7 @@ export async function upsertProductTranslations(
       description: fields.description,
       content: fields.content || null,
       cta_text: fields.cta_text || 'Comprar Agora',
+      category_name: fields.category_name || null,
       cover_url: coverUrl,
       preview_url: previewUrl,
       storage_url: storageUrl,

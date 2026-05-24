@@ -1,5 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
+import {
+  Plus as LucidePlus,
+  Trash2 as LucideTrash2,
+  GripVertical as LucideGripVertical,
+  ChevronUp as LucideChevronUp,
+  ChevronDown as LucideChevronDown
+} from 'lucide-react';
+
+const Plus = LucidePlus as any;
+const Trash2 = LucideTrash2 as any;
+const GripVertical = LucideGripVertical as any;
+const ChevronUp = LucideChevronUp as any;
+const ChevronDown = LucideChevronDown as any;
 import { supabaseAdmin } from '../../lib/supabase-admin';
 
 interface FAQ {

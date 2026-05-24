@@ -4,9 +4,32 @@
  */
 import { useState, useEffect } from 'react';
 import {
-  X, CheckCircle, XCircle, Clock, User, Package, DollarSign,
-  Calendar, Image, FileText, Loader2, AlertTriangle,
+  X as LucideX,
+  CheckCircle as LucideCheckCircle,
+  XCircle as LucideXCircle,
+  Clock as LucideClock,
+  User as LucideUser,
+  Package as LucidePackage,
+  DollarSign as LucideDollarSign,
+  Calendar as LucideCalendar,
+  Image as LucideImage,
+  FileText as LucideFileText,
+  Loader2 as LucideLoader2,
+  AlertTriangle as LucideAlertTriangle,
 } from 'lucide-react';
+
+const X = LucideX as any;
+const CheckCircle = LucideCheckCircle as any;
+const XCircle = LucideXCircle as any;
+const Clock = LucideClock as any;
+const User = LucideUser as any;
+const Package = LucidePackage as any;
+const DollarSign = LucideDollarSign as any;
+const Calendar = LucideCalendar as any;
+const Image = LucideImage as any;
+const FileText = LucideFileText as any;
+const Loader2 = LucideLoader2 as any;
+const AlertTriangle = LucideAlertTriangle as any;
 
 interface OrderDetail {
   id: string;

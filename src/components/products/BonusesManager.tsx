@@ -1,5 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Gift } from 'lucide-react';
+import {
+  Plus as LucidePlus,
+  Trash2 as LucideTrash2,
+  Gift as LucideGift
+} from 'lucide-react';
+
+const Plus = LucidePlus as any;
+const Trash2 = LucideTrash2 as any;
+const Gift = LucideGift as any;
 import { supabaseAdmin } from '../../lib/supabase-admin';
 
 interface Bonus {
@@ -125,7 +133,7 @@ export function BonusesManager({ productId }: BonusesManagerProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Valor Original (R$)
+              Valor Original ($)
             </label>
             <input
               type="number"
@@ -162,7 +170,7 @@ export function BonusesManager({ productId }: BonusesManagerProps) {
                 <h4 className="font-semibold text-gray-900">{bonus.title}</h4>
                 <p className="text-sm text-gray-600 mt-2">{bonus.description}</p>
                 <p className="text-sm font-semibold text-purple-600 mt-2">
-                  Valor: R$ {bonus.original_value.toFixed(2)}
+                  Valor: $ {bonus.original_value.toFixed(2)}
                 </p>
                 <div className="flex items-center gap-4 mt-3">
                   <button

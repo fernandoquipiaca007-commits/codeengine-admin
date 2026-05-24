@@ -1,5 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, ChevronUp, ChevronDown, GripVertical, Video } from 'lucide-react';
+import {
+  Trash2 as LucideTrash2,
+  ChevronUp as LucideChevronUp,
+  ChevronDown as LucideChevronDown,
+  GripVertical as LucideGripVertical,
+  Video as LucideVideo,
+  Headphones as LucideHeadphones
+} from 'lucide-react';
+
+const Trash2 = LucideTrash2 as any;
+const ChevronUp = LucideChevronUp as any;
+const ChevronDown = LucideChevronDown as any;
+const GripVertical = LucideGripVertical as any;
+const Video = LucideVideo as any;
+const Headphones = LucideHeadphones as any;
 import {
   CourseModule,
   CourseLesson,
@@ -60,6 +74,7 @@ export function CurriculumEditor({ productId, onChange }: CurriculumEditorProps)
         title: `Aula ${lessons.length + 1}`,
         module_id: moduleId || null,
         display_order: lessons.filter((x) => x.module_id === moduleId).length,
+        lesson_type: 'video',
         is_preview: false,
         is_active: true,
       });
@@ -82,7 +97,7 @@ export function CurriculumEditor({ productId, onChange }: CurriculumEditorProps)
       setLessons(list);
       onChange?.(list);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Falha ao enviar o vídeo da aula.';
+      const message = err instanceof Error ? err.message : 'Falha ao enviar o ficheiro da aula.';
       setUploadError(message);
       console.error('Lesson upload error:', err);
     } finally {
@@ -107,7 +122,11 @@ export function CurriculumEditor({ productId, onChange }: CurriculumEditorProps)
   const lessonsByModule = (moduleId: string) =>
     lessons.filter((l) => l.module_id === moduleId).sort((a, b) => a.display_order - b.display_order);
 
+  const LESSON_TYPE_LABELS = { video: '🎬 Vídeo', audio: '🎧 Áudio', link: '🔗 Link Externo' };
+
   function renderLessonRow(lesson: CourseLesson) {
+    const lessonType = lesson.lesson_type || 'video';
+
     return (
       <div key={lesson.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-3">
         <div className="flex items-start gap-2">
@@ -133,7 +152,23 @@ export function CurriculumEditor({ productId, onChange }: CurriculumEditorProps)
               rows={2}
               placeholder="Descrição"
             />
+
+            {/* Lesson Type Selector */}
             <div className="flex flex-wrap items-center gap-3">
+              <select
+                value={lessonType}
+                onChange={(e) => {
+                  const updated = { ...lesson, lesson_type: e.target.value as CourseLesson['lesson_type'] };
+                  setLessons(lessons.map((l) => (l.id === lesson.id ? updated : l)));
+                  saveLesson(productId, updated).then(load);
+                }}
+                className="border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
+              >
+                {Object.entries(LESSON_TYPE_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -145,7 +180,8 @@ export function CurriculumEditor({ productId, onChange }: CurriculumEditorProps)
                 />
                 Preview na store
               </label>
-              {lesson.video_storage_path && (
+
+              {lessonType === 'video' && lesson.video_storage_path && (
                 <span className="text-xs text-green-600 flex items-center gap-1">
                   <Video className="w-3 h-3" /> Vídeo carregado
                   {lesson.video_duration_seconds
@@ -153,22 +189,70 @@ export function CurriculumEditor({ productId, onChange }: CurriculumEditorProps)
                     : ''}
                 </span>
               )}
+              {lessonType === 'audio' && lesson.audio_storage_path && (
+                <span className="text-xs text-green-600 flex items-center gap-1">
+                  <Headphones className="w-3 h-3" /> Áudio carregado
+                  {lesson.video_duration_seconds
+                    ? ` (${Math.floor(lesson.video_duration_seconds / 60)}min)`
+                    : ''}
+                </span>
+              )}
             </div>
-            <div>
-              <input
-                type="file"
-                accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
-                disabled={saving}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void handleLessonFile(lesson.id, f);
-                }}
-                className="text-sm"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                MP4/WebM/MOV até 2GB (bucket ebooks-private). Se falhar, confirme VITE_SUPABASE_SERVICE_ROLE_KEY no admin.
-              </p>
-            </div>
+
+            {/* Media Upload / URL based on type */}
+            {lessonType === 'video' && (
+              <div>
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+                  disabled={saving}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleLessonFile(lesson.id, f);
+                  }}
+                  className="text-sm"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  MP4/WebM/MOV até 2GB (bucket ebooks-private).
+                </p>
+              </div>
+            )}
+
+            {lessonType === 'audio' && (
+              <div>
+                <input
+                  type="file"
+                  accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav,.mp3,.ogg,.wav,.m4a"
+                  disabled={saving}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleLessonFile(lesson.id, f);
+                  }}
+                  className="text-sm"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  MP3/OGG/WAV até 500MB.
+                </p>
+              </div>
+            )}
+
+            {lessonType === 'link' && (
+              <div>
+                <input
+                  type="url"
+                  value={lesson.external_url || ''}
+                  onChange={(e) =>
+                    setLessons(lessons.map((l) => (l.id === lesson.id ? { ...l, external_url: e.target.value } : l)))
+                  }
+                  onBlur={() => saveLesson(productId, lesson).then(load)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  placeholder="https://exemplo.com/recurso"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  URL externo (Notion, Google Docs, artigo, etc.)
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-1">
             <button type="button" onClick={() => moveLesson(lesson.id, 'up')} className="p-1 hover:bg-gray-200 rounded">

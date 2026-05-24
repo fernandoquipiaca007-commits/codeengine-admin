@@ -1,9 +1,23 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, Calendar, TrendingUp } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Calendar, TrendingUp, Globe, Heart } from 'lucide-react';
 import { supabaseAdmin as supabase } from '../lib/supabase-admin';
+
+// Typesafe bypass for React 18 JSX typing mismatch (TS2786)
+const PlusIcon = Plus as any;
+const EditIcon = Edit as any;
+const TrashIcon = Trash2 as any;
+const EyeIcon = Eye as any;
+const CalendarIcon = Calendar as any;
+const TrendingIcon = TrendingUp as any;
+const GlobeIcon = Globe as any;
+const HeartIcon = Heart as any;
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 const ADMIN_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
+
+const LANGUAGES = ['pt', 'en', 'fr'] as const;
+type Lang = typeof LANGUAGES[number];
+const LANG_LABELS: Record<Lang, string> = { pt: 'Português', en: 'English', fr: 'Français' };
 
 interface NewsArticle {
   id: string;
@@ -20,6 +34,17 @@ interface NewsArticle {
   views: number;
   created_at: string;
   updated_at: string;
+  likes_count?: number;
+}
+
+interface NewsTranslation {
+  id?: string;
+  news_id: string;
+  language: Lang;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
 }
 
 export function News() {
@@ -27,8 +52,14 @@ export function News() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null);
+  const [activeLang, setActiveLang] = useState<Lang>('pt');
+  const [translations, setTranslations] = useState<Record<Lang, Partial<NewsTranslation>>>({
+    pt: { title: '', slug: '', excerpt: '', content: '' },
+    en: { title: '', slug: '', excerpt: '', content: '' },
+    fr: { title: '', slug: '', excerpt: '', content: '' },
+  });
 
-  // Form state
+  // Form state (PT primary)
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [excerpt, setExcerpt] = useState('');
@@ -39,6 +70,7 @@ export function News() {
   const [author, setAuthor] = useState('AI Knowledge Team');
   const [status, setStatus] = useState<'draft' | 'published' | 'archived'>('draft');
   const [publishedAt, setPublishedAt] = useState('');
+  const [isFeatured, setIsFeatured] = useState(false);
 
   useEffect(() => {
     loadNews();
@@ -112,11 +144,18 @@ export function News() {
     setAuthor('AI Knowledge Team');
     setStatus('draft');
     setPublishedAt('');
+    setIsFeatured(false);
     setEditingNews(null);
     setShowForm(false);
+    setActiveLang('pt');
+    setTranslations({
+      pt: { title: '', slug: '', excerpt: '', content: '' },
+      en: { title: '', slug: '', excerpt: '', content: '' },
+      fr: { title: '', slug: '', excerpt: '', content: '' },
+    });
   }
 
-  function handleEdit(article: NewsArticle) {
+  async function handleEdit(article: NewsArticle) {
     setEditingNews(article);
     setTitle(article.title);
     setSlug(article.slug);
@@ -124,11 +163,57 @@ export function News() {
     setContent(article.content);
     setThumbnailUrl(article.thumbnail_url || '');
     setCategory(article.category);
-    setTags(article.tags.join(', '));
+    setTags(article.tags.filter(t => t !== 'Destaque').join(', '));
     setAuthor(article.author || 'AI Knowledge Team');
     setStatus(article.status);
     setPublishedAt(article.published_at || '');
+    setIsFeatured(article.tags.includes('Destaque'));
+    setActiveLang('pt');
     setShowForm(true);
+
+    // Load existing translations
+    try {
+      const { data: trans } = await supabase
+        .from('news_translations')
+        .select('*')
+        .eq('news_id', article.id);
+
+      const map: Record<Lang, Partial<NewsTranslation>> = {
+        pt: { title: article.title, slug: article.slug, excerpt: article.excerpt, content: article.content },
+        en: { title: '', slug: '', excerpt: '', content: '' },
+        fr: { title: '', slug: '', excerpt: '', content: '' },
+      };
+      (trans || []).forEach((t: any) => {
+        if (t.language === 'en' || t.language === 'fr') {
+          map[t.language as Lang] = { id: t.id, news_id: t.news_id, language: t.language, title: t.title, slug: t.slug, excerpt: t.excerpt || '', content: t.content };
+        }
+      });
+      setTranslations(map);
+    } catch (err) {
+      console.error('Error loading news translations:', err);
+    }
+  }
+
+  async function saveTranslations(newsId: string) {
+    for (const lang of (['en', 'fr'] as Lang[])) {
+      const t = translations[lang];
+      if (!t.title?.trim()) continue; // skip empty translations
+
+      const row = {
+        news_id: newsId,
+        language: lang,
+        title: t.title?.trim() || '',
+        slug: t.slug?.trim() || generateSlug(t.title?.trim() || ''),
+        excerpt: t.excerpt?.trim() || '',
+        content: t.content?.trim() || '',
+      };
+
+      const { error } = await supabase
+        .from('news_translations')
+        .upsert(row, { onConflict: 'news_id,language' });
+
+      if (error) console.error(`Error saving ${lang} translation:`, error);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -164,6 +249,10 @@ export function News() {
 
     try {
       const tagsArray = tags.split(',').map(t => t.trim()).filter(t => t);
+      const filteredTags = tagsArray.filter(t => t !== 'Destaque');
+      if (isFeatured) {
+        filteredTags.push('Destaque');
+      }
       const newsData = {
         title: title.trim(),
         slug: slug.trim(),
@@ -171,7 +260,7 @@ export function News() {
         content: content.trim(),
         thumbnail_url: thumbnailUrl?.trim() || null,
         category,
-        tags: tagsArray,
+        tags: filteredTags,
         author: author?.trim() || null,
         status,
         published_at: status === 'published' && !publishedAt ? new Date().toISOString() : publishedAt || null,
@@ -189,6 +278,9 @@ export function News() {
           }
           throw error;
         }
+
+        // Save EN/FR translations
+        await saveTranslations(editingNews.id);
         
         alert('✅ Notícia atualizada com sucesso!\n\n' + 
               (status === 'published' 
@@ -219,6 +311,11 @@ export function News() {
           } catch (notifyErr) {
             console.error('Notify error (non-blocking):', notifyErr);
           }
+        }
+
+        // Save EN/FR translations
+        if (inserted?.id) {
+          await saveTranslations(inserted.id);
         }
         
         alert('✅ Notícia criada com sucesso!\n\n' + 
@@ -334,44 +431,101 @@ export function News() {
           onClick={() => setShowForm(!showForm)}
           className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
         >
-          <Plus className="w-5 h-5" />
+          <PlusIcon className="w-5 h-5" />
           {showForm ? 'Cancelar' : 'Nova Notícia'}
         </button>
       </div>
 
       {showForm && (
         <div className="bg-gray-800 rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold text-white mb-6">
+          <h2 className="text-xl font-semibold text-white mb-4">
             {editingNews ? 'Editar Notícia' : 'Nova Notícia'}
           </h2>
+
+          {/* Language Tabs */}
+          <div className="flex items-center gap-2 mb-6 pb-4 border-b border-gray-700">
+            <GlobeIcon className="w-4 h-4 text-gray-400" />
+            <span className="text-sm text-gray-400 mr-2">Idioma:</span>
+            {LANGUAGES.map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => {
+                  // Save current PT fields to translations before switching
+                  if (activeLang === 'pt') {
+                    setTranslations(prev => ({ ...prev, pt: { ...prev.pt, title, slug, excerpt, content } }));
+                  }
+                  setActiveLang(lang);
+                  // Load fields from translation when switching to PT
+                  if (lang === 'pt') {
+                    const pt = translations.pt;
+                    if (pt.title) setTitle(pt.title);
+                    if (pt.slug) setSlug(pt.slug);
+                    if (pt.excerpt) setExcerpt(pt.excerpt);
+                    if (pt.content) setContent(pt.content);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  activeLang === lang
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                {LANG_LABELS[lang]}
+                {lang !== 'pt' && translations[lang]?.title?.trim() && (
+                  <span className="ml-1 text-green-400">✓</span>
+                )}
+              </button>
+            ))}
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Título *
+                  Título ({activeLang.toUpperCase()}) *
                 </label>
                 <input
                   type="text"
-                  value={title}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  placeholder="Ex: Nova Era da Inteligência Artificial"
+                  value={activeLang === 'pt' ? title : (translations[activeLang]?.title || '')}
+                  onChange={(e) => {
+                    if (activeLang === 'pt') {
+                      handleTitleChange(e.target.value);
+                    } else {
+                      setTranslations(prev => ({
+                        ...prev,
+                        [activeLang]: { ...prev[activeLang], title: e.target.value, slug: prev[activeLang]?.slug || generateSlug(e.target.value) }
+                      }));
+                    }
+                  }}
+                  placeholder={activeLang === 'pt' ? 'Ex: Nova Era da Inteligência Artificial' : `Title in ${LANG_LABELS[activeLang]}`}
                   className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                  required
+                  required={activeLang === 'pt'}
                 />
-                <p className="text-xs text-gray-400 mt-1">O slug será gerado automaticamente</p>
+                {activeLang === 'pt' && <p className="text-xs text-gray-400 mt-1">O slug será gerado automaticamente</p>}
+                {activeLang !== 'pt' && <p className="text-xs text-gray-400 mt-1">Deixe vazio para usar o conteúdo em Português como fallback</p>}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Slug * <span className="text-gray-500">(URL amigável)</span>
+                  Slug ({activeLang.toUpperCase()}) * <span className="text-gray-500">(URL amigável)</span>
                 </label>
                 <input
                   type="text"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  value={activeLang === 'pt' ? slug : (translations[activeLang]?.slug || '')}
+                  onChange={(e) => {
+                    if (activeLang === 'pt') {
+                      setSlug(e.target.value);
+                    } else {
+                      setTranslations(prev => ({
+                        ...prev,
+                        [activeLang]: { ...prev[activeLang], slug: e.target.value }
+                      }));
+                    }
+                  }}
                   placeholder="nova-era-inteligencia-artificial"
                   className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                  required
+                  required={activeLang === 'pt'}
                 />
                 <p className="text-xs text-gray-400 mt-1">Apenas letras minúsculas, números e hífens</p>
               </div>
@@ -436,6 +590,21 @@ export function News() {
                 />
                 <p className="text-xs text-gray-400 mt-1">Deixe vazio para usar data atual</p>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Notícia em Destaque?
+                </label>
+                <select
+                  value={isFeatured ? 'yes' : 'no'}
+                  onChange={(e) => setIsFeatured(e.target.value === 'yes')}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="no">Normal</option>
+                  <option value="yes">Em Destaque (Fica no topo)</option>
+                </select>
+                <p className="text-xs text-gray-400 mt-1">Artigos em destaque aparecem no carrossel e no topo da página</p>
+              </div>
             </div>
 
             <div>
@@ -467,30 +636,48 @@ export function News() {
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Resumo * <span className="text-gray-500">(aparece nos cards)</span>
+                Resumo ({activeLang.toUpperCase()}) * <span className="text-gray-500">(aparece nos cards)</span>
               </label>
               <textarea
-                value={excerpt}
-                onChange={(e) => setExcerpt(e.target.value)}
+                value={activeLang === 'pt' ? excerpt : (translations[activeLang]?.excerpt || '')}
+                onChange={(e) => {
+                  if (activeLang === 'pt') {
+                    setExcerpt(e.target.value);
+                  } else {
+                    setTranslations(prev => ({
+                      ...prev,
+                      [activeLang]: { ...prev[activeLang], excerpt: e.target.value }
+                    }));
+                  }
+                }}
                 rows={3}
-                placeholder="Descrição curta que aparecerá nos cards de notícias..."
+                placeholder={activeLang === 'pt' ? 'Descrição curta que aparecerá nos cards de notícias...' : `Short summary in ${LANG_LABELS[activeLang]}`}
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                required
+                required={activeLang === 'pt'}
               />
               <p className="text-xs text-gray-400 mt-1">Máximo recomendado: 150 caracteres</p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Conteúdo * <span className="text-gray-500">(suporta Markdown)</span>
+                Conteúdo ({activeLang.toUpperCase()}) * <span className="text-gray-500">(suporta Markdown)</span>
               </label>
               <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
+                value={activeLang === 'pt' ? content : (translations[activeLang]?.content || '')}
+                onChange={(e) => {
+                  if (activeLang === 'pt') {
+                    setContent(e.target.value);
+                  } else {
+                    setTranslations(prev => ({
+                      ...prev,
+                      [activeLang]: { ...prev[activeLang], content: e.target.value }
+                    }));
+                  }
+                }}
                 rows={10}
                 placeholder="# Título Principal&#10;&#10;Seu conteúdo aqui...&#10;&#10;## Subtítulo&#10;&#10;- Item 1&#10;- Item 2"
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500 font-mono text-sm"
-                required
+                required={activeLang === 'pt'}
               />
               <p className="text-xs text-gray-400 mt-1">Use Markdown para formatação: # para títulos, ** para negrito, - para listas</p>
             </div>
@@ -532,6 +719,9 @@ export function News() {
                 Views
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Likes
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 Data
               </th>
               <th className="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -542,7 +732,7 @@ export function News() {
           <tbody className="divide-y divide-gray-700">
             {news.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
                   Nenhuma notícia cadastrada
                 </td>
               </tr>
@@ -559,14 +749,21 @@ export function News() {
                         />
                       )}
                       <div>
-                        <div className="font-semibold text-white">{article.title}</div>
+                        <div className="flex items-center gap-2 font-semibold text-white">
+                          <span>{article.title}</span>
+                          {article.tags?.includes('Destaque') && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400 text-xs font-semibold">
+                              ★ Destaque
+                            </span>
+                          )}
+                        </div>
                         <div className="text-sm text-gray-400 line-clamp-1">{article.excerpt}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-semibold">
-                      <TrendingUp className="w-3 h-3" />
+                      <TrendingIcon className="w-3 h-3" />
                       {article.category}
                     </span>
                   </td>
@@ -577,13 +774,19 @@ export function News() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-gray-400">
-                      <Eye className="w-4 h-4" />
+                      <EyeIcon className="w-4 h-4" />
                       <span>{article.views}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-red-400 font-semibold">
+                      <HeartIcon className="w-4 h-4 fill-current" />
+                      <span>{article.likes_count || 0}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-gray-400 text-sm">
-                      <Calendar className="w-4 h-4" />
+                      <CalendarIcon className="w-4 h-4" />
                       {article.published_at
                         ? new Date(article.published_at).toLocaleDateString('pt-BR')
                         : 'Não publicado'}
@@ -596,14 +799,14 @@ export function News() {
                         className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
                         title="Editar"
                       >
-                        <Edit className="w-4 h-4" />
+                        <EditIcon className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(article.id)}
                         className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
                         title="Excluir"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <TrashIcon className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

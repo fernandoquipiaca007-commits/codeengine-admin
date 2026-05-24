@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useAdminAnalytics } from '../hooks/useAdminAnalytics';
-import { formatCurrency } from '../lib/analytics';
+import { formatCurrency, formatKwanza } from '../lib/analytics';
 
 function StatCard({
   label,
@@ -82,7 +82,7 @@ function RevenueChart({
 }
 
 export default function Analytics() {
-  const { data, loading, error, lastUpdated } = useAdminAnalytics();
+  const { data, loading, error, warning, lastUpdated } = useAdminAnalytics();
 
   return (
     <div className="p-4 sm:p-6 md:p-8 overflow-x-hidden">
@@ -105,6 +105,66 @@ export default function Analytics() {
           {error}
         </div>
       )}
+      {warning && !error && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {warning}
+        </div>
+      )}
+
+      {/* Revenue & Sales Segmentation Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Global USD Card */}
+        <div className="bg-gradient-to-br from-blue-50 to-white shadow rounded-xl p-6 border border-blue-100">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-blue-900">Vendas & Receita Global (USD)</h2>
+            <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">USD $</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Receita Total</p>
+              <p className="text-2xl font-bold text-gray-900">{loading ? '...' : formatCurrency(data.totalRevenue)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Vendas Totais</p>
+              <p className="text-2xl font-bold text-gray-900">{loading ? '...' : data.totalSales}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Receita Hoje</p>
+              <p className="text-xl font-semibold text-gray-800">{loading ? '...' : formatCurrency(data.revenueToday)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Vendas Hoje</p>
+              <p className="text-xl font-semibold text-gray-800">{loading ? '...' : data.salesToday}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Angola AOA Card */}
+        <div className="bg-gradient-to-br from-orange-50 to-white shadow rounded-xl p-6 border border-orange-100">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-orange-900">Vendas & Receita Angola (AOA)</h2>
+            <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">AOA Kz</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Receita Total</p>
+              <p className="text-2xl font-bold text-gray-900">{loading ? '...' : formatKwanza(data.aoaRevenue)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Vendas Totais</p>
+              <p className="text-2xl font-bold text-gray-900">{loading ? '...' : data.aoaSales}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Receita Hoje</p>
+              <p className="text-xl font-semibold text-gray-800">{loading ? '...' : formatKwanza(data.aoaRevenueToday)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Vendas Hoje</p>
+              <p className="text-xl font-semibold text-gray-800">{loading ? '...' : data.aoaSalesToday}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Primary stats — existing cards wired */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-6">
@@ -129,7 +189,7 @@ export default function Analytics() {
           }
         />
         <StatCard
-          label="Valor Médio do Pedido"
+          label="Valor Médio do Pedido (USD)"
           value={formatCurrency(data.avgOrderValue)}
           loading={loading}
           icon={
@@ -142,18 +202,14 @@ export default function Analytics() {
 
       {/* Extended KPIs — same design system */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <StatCard label="Total de Vendas" value={String(data.totalSales)} loading={loading} icon={<span className="text-lg font-bold">#</span>} />
-        <StatCard label="Receita Total" value={formatCurrency(data.totalRevenue)} loading={loading} icon={<span className="text-lg font-bold">R$</span>} />
-        <StatCard label="Total de Membros" value={String(data.totalMembers)} loading={loading} icon={<span className="text-lg font-bold">@</span>} />
-        <StatCard label="Vendas Hoje" value={String(data.salesToday)} loading={loading} icon={<span className="text-lg font-bold">↑</span>} />
-        <StatCard label="Receita Hoje" value={formatCurrency(data.revenueToday)} loading={loading} icon={<span className="text-lg font-bold">$</span>} />
-        <StatCard label="Visitantes Hoje" value={String(data.visitorsToday)} loading={loading} icon={<span className="text-lg font-bold">◎</span>} />
-        <StatCard label="Favoritos" value={String(data.totalFavorites)} loading={loading} icon={<span className="text-lg font-bold">♥</span>} />
+        <StatCard label="Total de Membros" value={String(data.totalMembers)} loading={loading} icon={<span className="text-lg font-bold text-gray-400">@</span>} />
+        <StatCard label="Visitantes Hoje" value={String(data.visitorsToday)} loading={loading} icon={<span className="text-lg font-bold text-gray-400">◎</span>} />
+        <StatCard label="Favoritos" value={String(data.totalFavorites)} loading={loading} icon={<span className="text-lg font-bold text-gray-400">♥</span>} />
         <StatCard
           label="Notificações"
           value={`${data.unreadNotifications} / ${data.totalNotifications}`}
           loading={loading}
-          icon={<span className="text-lg font-bold">!</span>}
+          icon={<span className="text-lg font-bold text-gray-400">!</span>}
         />
       </div>
 
@@ -229,6 +285,8 @@ export default function Analytics() {
                     <td className="py-3 pr-4 font-medium text-gray-900">
                       {order.is_free ? (
                         <span className="text-green-600 font-semibold">Grátis</span>
+                      ) : order.transaction_id?.startsWith('fastpay_') ? (
+                        formatKwanza(order.amount_paid)
                       ) : (
                         formatCurrency(order.amount_paid)
                       )}

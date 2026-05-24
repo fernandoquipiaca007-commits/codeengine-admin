@@ -4,10 +4,17 @@ interface CategoryListProps {
   categories: Category[];
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
+  onManageSubcategories: (category: Category) => void;
   loading: boolean;
 }
 
-export default function CategoryList({ categories, onEdit, onDelete, loading }: CategoryListProps) {
+export default function CategoryList({
+  categories,
+  onEdit,
+  onDelete,
+  onManageSubcategories,
+  loading,
+}: CategoryListProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -80,6 +87,12 @@ export default function CategoryList({ categories, onEdit, onDelete, loading }: 
                 -
               </td>
               <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                <button
+                  onClick={() => onManageSubcategories(category)}
+                  className="text-indigo-600 hover:text-indigo-900 mr-4 font-semibold"
+                >
+                  Subcategorias
+                </button>
                 <button
                   onClick={() => onEdit(category)}
                   className="text-primary-600 hover:text-primary-900 mr-4"

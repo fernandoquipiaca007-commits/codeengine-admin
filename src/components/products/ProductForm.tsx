@@ -32,6 +32,12 @@ export interface ProductFormData {
   product_type?: 'file' | 'course' | 'ebook';
   is_free?: boolean;
   is_course_mode?: boolean;
+  visibility?: 'public' | 'members_only';
+  min_member_level?: string;
+  access_duration_days?: number | null;
+  use_shared_content?: boolean;
+  aoa_price?: number;
+  subcategory_id?: string;
 }
 
 export default function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
@@ -52,6 +58,12 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     product_type: (product as { product_type?: string })?.product_type as 'file' | 'course' | 'ebook' || 'file',
     is_free: (product as { is_free?: boolean })?.is_free ?? false,
     is_course_mode: false,
+    visibility: (product as any)?.visibility || 'public',
+    min_member_level: (product as any)?.min_member_level || '',
+    access_duration_days: (product as any)?.access_duration_days || null,
+    use_shared_content: (product as any)?.use_shared_content ?? false,
+    aoa_price: (product as any)?.aoa_price || 0,
+    subcategory_id: (product as any)?.subcategory_id || '',
     enabledLanguages: ['pt'] as AppLocale[],
     translations: {
       pt: {
@@ -64,6 +76,32 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 
   const [tagInput, setTagInput] = useState('');
   const [activeLang, setActiveLang] = useState<AppLocale>('pt');
+  const [subcategories, setSubcategories] = useState<any[]>([]);
+
+  // Load subcategories dynamically
+  useEffect(() => {
+    if (!formData.category_id) {
+      setSubcategories([]);
+      return;
+    }
+
+    async function loadSubcategories() {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from('subcategories')
+          .select('*')
+          .eq('category_id', formData.category_id)
+          .order('display_order', { ascending: true });
+        
+        if (error) throw error;
+        setSubcategories(data || []);
+      } catch (err) {
+        console.error('Error loading subcategories:', err);
+      }
+    }
+
+    void loadSubcategories();
+  }, [formData.category_id]);
 
   // Load categories
   useEffect(() => {
@@ -81,6 +119,45 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
       setCategories(data || []);
     } catch (error) {
       console.error('Error loading categories:', error);
+    }
+  }
+
+  // Load existing translations if editing
+  useEffect(() => {
+    if (product?.id) {
+      loadTranslations();
+    }
+  }, [product?.id]);
+
+  async function loadTranslations() {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('products_translations')
+        .select('*')
+        .eq('product_id', product!.id);
+      
+      if (error) throw error;
+      if (data && data.length > 0) {
+        const newTrans = { ...formData.translations };
+        data.forEach(t => {
+          if (t.language === 'en' || t.language === 'fr') {
+            newTrans[t.language as AppLocale] = {
+              title: t.title,
+              subtitle: t.subtitle || '',
+              description: t.description || '',
+              content: t.content || '',
+              cta_text: t.cta_text || 'Comprar Agora',
+              category_name: t.category_name || '',
+              cover_url: t.cover_url || undefined,
+              preview_url: t.preview_url || undefined,
+              storage_url: t.storage_url || undefined,
+            };
+          }
+        });
+        setFormData(prev => ({ ...prev, translations: newTrans }));
+      }
+    } catch (err) {
+      console.error('Error loading translations:', err);
     }
   }
 
@@ -257,11 +334,62 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             ))}
           </select>
           {errors.category_id && <p className="mt-1 text-sm text-red-600">{errors.category_id}</p>}
+          
+          {/* Subcategory Select dropdown */}
+          <div className="mt-4">
+            <label htmlFor="subcategory" className="block text-sm font-medium text-gray-700">
+              Subcategoria
+            </label>
+            <select
+              id="subcategory"
+              value={formData.subcategory_id || ''}
+              onChange={(e) => setFormData({ ...formData, subcategory_id: e.target.value || undefined })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+            >
+              <option value="">Nenhuma subcategoria</option>
+              {subcategories.map((sub) => (
+                <option key={sub.id} value={sub.id}>
+                  {sub.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {activeLang !== 'pt' && (
+            <div className="mt-3">
+              <label htmlFor="category_name" className="block text-sm font-medium text-gray-700">
+                Nome da Categoria em {activeLang.toUpperCase()}
+              </label>
+              <input
+                type="text"
+                id="category_name"
+                value={t.category_name || ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFormData({
+                    ...formData,
+                    translations: {
+                      ...formData.translations,
+                      [activeLang]: {
+                        ...formData.translations[activeLang],
+                        title: formData.translations[activeLang]?.title || '',
+                        description: formData.translations[activeLang]?.description || '',
+                        cta_text: formData.translations[activeLang]?.cta_text || 'Comprar Agora',
+                        category_name: v,
+                      },
+                    },
+                  });
+                }}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                placeholder={`Nome da categoria em ${activeLang.toUpperCase()}`}
+              />
+            </div>
+          )}
         </div>
 
         <div>
           <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-            Preço (R$) {!formData.is_free && '*'}
+            Preço ($) {!formData.is_free && '*'}
           </label>
           <input
             type="number"
@@ -282,6 +410,24 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             <p className="mt-1 text-xs text-gray-500">Preço desativado para produtos gratuitos.</p>
           )}
           {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
+
+          {/* Preço em Kwanza (AOA) */}
+          {!formData.is_free && (
+            <div className="mt-4">
+              <label htmlFor="aoa_price" className="block text-sm font-medium text-gray-700">
+                Preço em Kwanza (AOA)
+              </label>
+              <input
+                type="number"
+                id="aoa_price"
+                min="0"
+                value={formData.aoa_price || 0}
+                onChange={(e) => setFormData({ ...formData, aoa_price: parseFloat(e.target.value) || 0 })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                placeholder="Ex: 50000"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -404,13 +550,43 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
       {/* CTA Text */}
       <div>
         <label htmlFor="cta_text" className="block text-sm font-medium text-gray-700">
-          Texto do Botão de Ação
+          Texto do Botão de Ação ({activeLang.toUpperCase()})
         </label>
         <input
           type="text"
           id="cta_text"
-          value={formData.cta_text}
-          onChange={(e) => setFormData({ ...formData, cta_text: e.target.value })}
+          value={t.cta_text || ''}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (activeLang === 'pt') {
+              setFormData({
+                ...formData,
+                cta_text: v,
+                translations: {
+                  ...formData.translations,
+                  pt: {
+                    ...formData.translations.pt,
+                    title: formData.translations.pt?.title || formData.title,
+                    description: formData.translations.pt?.description || formData.description,
+                    cta_text: v
+                  }
+                }
+              });
+            } else {
+              setFormData({
+                ...formData,
+                translations: {
+                  ...formData.translations,
+                  [activeLang]: {
+                    ...formData.translations[activeLang],
+                    title: formData.translations[activeLang]?.title || '',
+                    description: formData.translations[activeLang]?.description || '',
+                    cta_text: v
+                  }
+                }
+              });
+            }
+          }}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
           placeholder="Comprar Agora"
         />
@@ -435,70 +611,170 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
         </select>
       </div>
 
+      {/* Visibility & Access Controls */}
+      <div className="border-t border-gray-200 pt-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Visibilidade e Acesso</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="visibility" className="block text-sm font-medium text-gray-700">
+              Público alvo
+            </label>
+            <select
+              id="visibility"
+              value={formData.visibility || 'public'}
+              onChange={(e) => setFormData({ ...formData, visibility: e.target.value as 'public' | 'members_only' })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+            >
+              <option value="public">Público (todos)</option>
+              <option value="members_only">Apenas membros</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="min_member_level" className="block text-sm font-medium text-gray-700">
+              Nível mínimo
+            </label>
+            <select
+              id="min_member_level"
+              value={formData.min_member_level || ''}
+              onChange={(e) => setFormData({ ...formData, min_member_level: e.target.value || undefined })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+            >
+              <option value="">Todos os níveis</option>
+              <option value="starter">Starter</option>
+              <option value="bronze">Bronze</option>
+              <option value="silver">Silver</option>
+              <option value="gold">Gold</option>
+              <option value="platinum">Platinum</option>
+              <option value="diamond">Diamond</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">Membros abaixo deste nível não verão o produto</p>
+          </div>
+
+          <div>
+            <label htmlFor="access_duration" className="block text-sm font-medium text-gray-700">
+              Prazo de acesso (dias)
+            </label>
+            <input
+              type="number"
+              id="access_duration"
+              min="0"
+              value={formData.access_duration_days ?? ''}
+              onChange={(e) => setFormData({ ...formData, access_duration_days: e.target.value ? parseInt(e.target.value) : null })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+              placeholder="Vitalício"
+            />
+            <p className="mt-1 text-xs text-gray-500">Vazio = acesso vitalício após compra</p>
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm mt-4">
+          <input
+            type="checkbox"
+            checked={formData.use_shared_content ?? false}
+            onChange={(e) => setFormData({ ...formData, use_shared_content: e.target.checked })}
+          />
+          Mesmo conteúdo/ficheiro para os 3 idiomas (PT/EN/FR)
+          <span className="text-xs text-gray-400 ml-1">— desativa upload por idioma separado</span>
+        </label>
+      </div>
+
       {/* File Uploads - Compact Version */}
       <div className="border-t border-gray-200 pt-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Arquivos</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Cover Image */}
-          <CompactFileUpload
-            label="Imagem de Capa"
-            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-            maxSize={5 * 1024 * 1024}
-            required={!product}
-            currentFile={product?.cover_url}
-            onFileSelect={(file) => setFormData({ ...formData, cover_file: file })}
-            helpText="Max 5MB • JPG, PNG, WebP"
-          />
+          {(!formData.use_shared_content || activeLang === 'pt') && (
+            <CompactFileUpload
+              label={`Imagem de Capa (${activeLang.toUpperCase()})`}
+              accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+              maxSize={5 * 1024 * 1024}
+              required={!product && activeLang === 'pt'}
+              currentFile={(activeLang === 'pt' ? product?.cover_url : formData.translations[activeLang]?.cover_url) || undefined}
+              onFileSelect={(file) => {
+                if (activeLang === 'pt') {
+                  setFormData({ ...formData, cover_file: file });
+                } else {
+                  setFormData(prev => ({
+                    ...prev,
+                    translations: {
+                      ...prev.translations,
+                      [activeLang]: { ...prev.translations[activeLang], title: prev.translations[activeLang]?.title || '', description: prev.translations[activeLang]?.description || '', cta_text: prev.translations[activeLang]?.cta_text || '', cover_file: file }
+                    }
+                  }));
+                }
+              }}
+              helpText="Max 5MB • JPG, PNG, WebP"
+            />
+          )}
 
           {/* Preview File */}
-          <CompactFileUpload
-            label="Arquivo de Preview"
-            accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
-            maxSize={10 * 1024 * 1024}
-            currentFile={product?.preview_url}
-            onFileSelect={(file) => setFormData({ ...formData, preview_file: file })}
-            helpText="Max 10MB • JPG, PNG, PDF"
-          />
+          {(!formData.use_shared_content || activeLang === 'pt') && (
+            <CompactFileUpload
+              label={`Arquivo de Preview (${activeLang.toUpperCase()})`}
+              accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
+              maxSize={10 * 1024 * 1024}
+              currentFile={(activeLang === 'pt' ? product?.preview_url : formData.translations[activeLang]?.preview_url) || undefined}
+              onFileSelect={(file) => {
+                if (activeLang === 'pt') {
+                  setFormData({ ...formData, preview_file: file });
+                } else {
+                  setFormData(prev => ({
+                    ...prev,
+                    translations: {
+                      ...prev.translations,
+                      [activeLang]: { ...prev.translations[activeLang], title: prev.translations[activeLang]?.title || '', description: prev.translations[activeLang]?.description || '', cta_text: prev.translations[activeLang]?.cta_text || '', preview_file: file }
+                    }
+                  }));
+                }
+              }}
+              helpText="Max 10MB • JPG, PNG, PDF"
+            />
+          )}
 
-          {/* Video File */}
-          <CompactFileUpload
-            label="Vídeo Promocional"
-            accept="video/mp4,video/webm,video/ogg,.mp4,.webm,.ogg"
-            maxSize={100 * 1024 * 1024}
-            currentFile={product?.video_url}
-            onFileSelect={(file) => setFormData({ ...formData, video_file: file })}
-            helpText="Max 100MB • MP4, WebM, OGG"
-          />
+          {/* Video File - Always shared right now based on logic, but let's keep it under PT */}
+          {activeLang === 'pt' && (
+            <CompactFileUpload
+              label="Vídeo Promocional"
+              accept="video/mp4,video/webm,video/ogg,.mp4,.webm,.ogg"
+              maxSize={100 * 1024 * 1024}
+              currentFile={product?.video_url || undefined}
+              onFileSelect={(file) => setFormData({ ...formData, video_file: file })}
+              helpText="Max 100MB • MP4, WebM, OGG (Partilhado por todos idiomas)"
+            />
+          )}
 
-          {/* Digital Product File (default PT) */}
-          <CompactFileUpload
-            label={`Produto Digital (${activeLang.toUpperCase()})`}
-            accept=".pdf,.zip,.epub,.docx,.mp4,.rar,.7z"
-            maxSize={2 * 1024 * 1024 * 1024}
-            required={!product && activeLang === 'pt'}
-            currentFile={product?.storage_url}
-            onFileSelect={(file) => {
-              if (activeLang === 'pt') {
-                setFormData({ ...formData, product_file: file });
-              } else {
-                setFormData({
-                  ...formData,
-                  translations: {
-                    ...formData.translations,
-                    [activeLang]: {
-                      ...formData.translations[activeLang],
-                      title: formData.translations[activeLang]?.title || '',
-                      description: formData.translations[activeLang]?.description || '',
-                      cta_text: formData.translations[activeLang]?.cta_text || 'Comprar Agora',
-                      product_file: file,
+          {/* Digital Product File */}
+          {(!formData.use_shared_content || activeLang === 'pt') && (
+            <CompactFileUpload
+              label={`Produto Digital (${activeLang.toUpperCase()})`}
+              accept=".pdf,.zip,.epub,.docx,.mp4,.rar,.7z"
+              maxSize={2 * 1024 * 1024 * 1024}
+              required={!product && activeLang === 'pt'}
+              currentFile={(activeLang === 'pt' ? product?.storage_url : formData.translations[activeLang]?.storage_url) || undefined}
+              onFileSelect={(file) => {
+                if (activeLang === 'pt') {
+                  setFormData({ ...formData, product_file: file });
+                } else {
+                  setFormData({
+                    ...formData,
+                    translations: {
+                      ...formData.translations,
+                      [activeLang]: {
+                        ...formData.translations[activeLang],
+                        title: formData.translations[activeLang]?.title || '',
+                        description: formData.translations[activeLang]?.description || '',
+                        cta_text: formData.translations[activeLang]?.cta_text || 'Comprar Agora',
+                        product_file: file,
+                      },
                     },
-                  },
-                });
-              }
-            }}
-            helpText="PDF, ZIP, EPUB, DOCX, MP4 — um arquivo por idioma"
-          />
+                  });
+                }
+              }}
+              helpText="PDF, ZIP, EPUB, DOCX, MP4 — arquivo por idioma"
+            />
+          )}
         </div>
 
         {(errors.cover_file || errors.product_file) && (

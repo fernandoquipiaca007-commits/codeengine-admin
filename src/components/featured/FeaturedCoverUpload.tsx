@@ -1,5 +1,13 @@
 import { useRef, useState } from 'react';
-import { ImagePlus, Upload, X } from 'lucide-react';
+import {
+  ImagePlus as LucideImagePlus,
+  Upload as LucideUpload,
+  X as LucideX
+} from 'lucide-react';
+
+const ImagePlus = LucideImagePlus as any;
+const Upload = LucideUpload as any;
+const X = LucideX as any;
 
 interface FeaturedCoverUploadProps {
   coverUrl: string;

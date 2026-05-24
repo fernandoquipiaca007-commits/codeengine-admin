@@ -106,6 +106,10 @@ export async function createProduct(formData: ProductFormData): Promise<CreatePr
         product_type: formData.product_type || (formData.is_course_mode ? 'course' : 'file'),
         is_free: formData.is_free ?? false,
         fastpay_link: formData.fastpay_link?.trim() || null,
+        visibility: formData.visibility || 'public',
+        min_member_level: formData.min_member_level || null,
+        access_duration_days: formData.access_duration_days || null,
+        use_shared_content: formData.use_shared_content ?? false,
       })
       .select()
       .single();
@@ -197,7 +201,7 @@ export async function updateProduct(
       // Delete old preview
       if (existingProduct.preview_storage_path || existingProduct.preview_url) {
         await deleteOldFile(
-          existingProduct.preview_storage_path || existingProduct.preview_url, 
+          existingProduct.preview_storage_path || existingProduct.preview_url || '', 
           STORAGE_BUCKETS.PRODUCT_PREVIEWS.name
         );
       }
@@ -214,7 +218,7 @@ export async function updateProduct(
       // Delete old video
       if (existingProduct.video_storage_path || existingProduct.video_url) {
         await deleteOldFile(
-          existingProduct.video_storage_path || existingProduct.video_url, 
+          existingProduct.video_storage_path || existingProduct.video_url || '', 
           STORAGE_BUCKETS.PRODUCT_VIDEOS.name
         );
       }
@@ -261,6 +265,10 @@ export async function updateProduct(
         product_type: formData.product_type || (formData.is_course_mode ? 'course' : 'file'),
         is_free: formData.is_free ?? false,
         fastpay_link: formData.fastpay_link?.trim() || null,
+        visibility: formData.visibility || 'public',
+        min_member_level: formData.min_member_level || null,
+        access_duration_days: formData.access_duration_days || null,
+        use_shared_content: formData.use_shared_content ?? false,
       })
       .eq('id', productId)
       .select()

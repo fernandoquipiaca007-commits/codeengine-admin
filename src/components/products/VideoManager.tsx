@@ -1,5 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Video as VideoIcon, Upload, Link as LinkIcon } from 'lucide-react';
+import {
+  Plus as LucidePlus,
+  Trash2 as LucideTrash2,
+  Video as LucideVideoIcon,
+  Upload as LucideUpload,
+  Link as LucideLinkIcon
+} from 'lucide-react';
+
+const Plus = LucidePlus as any;
+const Trash2 = LucideTrash2 as any;
+const VideoIcon = LucideVideoIcon as any;
+const Upload = LucideUpload as any;
+const LinkIcon = LucideLinkIcon as any;
 import { supabaseAdmin } from '../../lib/supabase-admin';
 import { uploadFile, STORAGE_BUCKETS, generateProductFilePath } from '../../lib/storage';
 

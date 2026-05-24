@@ -4,6 +4,9 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
+// Force Vite to recompile this file and read the new .env.local variables
+console.log('[supabase] Init clients with service key length:', supabaseServiceRoleKey ? supabaseServiceRoleKey.length : 0);
+
 if (!supabaseUrl) {
   throw new Error('Missing VITE_SUPABASE_URL environment variable');
 }

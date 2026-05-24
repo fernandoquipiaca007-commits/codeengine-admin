@@ -39,27 +39,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const loadingAdminRef = useRef(false);
+  const loadedUserIdRef = useRef<string | null>(null);
 
   const authClient = getAuthClient();
   const dataClient = getDataClient();
 
-  async function loadAdminUser(authUserId: string) {
+  async function loadAdminUser(authUserId: string, force = false) {
+    console.log('[auth] loadAdminUser called', { authUserId, force, loadingAdminRef: loadingAdminRef.current, loadedUserId: loadedUserIdRef.current });
     if (loadingAdminRef.current) return;
+    if (!force && loadedUserIdRef.current === authUserId) {
+      console.log('[auth] already loaded, skipping');
+      setLoading(false);
+      return;
+    }
+
     loadingAdminRef.current = true;
 
     try {
+      console.log('[auth] fetching admin_users for', authUserId);
       const { data, error } = await dataClient
         .from('admin_users')
         .select('*')
         .eq('auth_user_id', authUserId)
         .eq('active', true)
         .single();
+      
+      console.log('[auth] fetch result:', { data, error });
 
       if (error) {
         console.error('[auth] Error loading admin user:', error);
         setAdminUser(null);
+        loadedUserIdRef.current = null;
       } else {
         setAdminUser(data);
+        loadedUserIdRef.current = authUserId;
 
         await dataClient
           .from('admin_users')
@@ -69,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('[auth] Error loading admin user:', error);
       setAdminUser(null);
+      loadedUserIdRef.current = null;
     } finally {
       loadingAdminRef.current = false;
       setLoading(false);
@@ -110,12 +124,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (session?.user) {
+        console.log('[auth] onAuthStateChange user active, event:', event);
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED') {
           setLoading(true);
           await loadAdminUser(session.user.id);
         }
       } else {
+        console.log('[auth] onAuthStateChange no user, event:', event);
         setAdminUser(null);
+        loadedUserIdRef.current = null;
         setLoading(false);
       }
     });
@@ -152,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authClient.auth.signOut();
     setUser(null);
     setAdminUser(null);
+    loadedUserIdRef.current = null;
   }
 
   function hasPermission(permission: string): boolean {

@@ -6,6 +6,7 @@ export interface ProductTranslationFields {
   description: string;
   content?: string;
   cta_text: string;
+  category_name?: string;
   cover_file?: File;
   preview_file?: File;
   product_file?: File;

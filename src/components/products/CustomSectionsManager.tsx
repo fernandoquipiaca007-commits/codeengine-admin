@@ -1,14 +1,28 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Edit2 } from 'lucide-react';
+import {
+  Plus as LucidePlus,
+  Trash2 as LucideTrash2,
+  GripVertical as LucideGripVertical,
+  ChevronUp as LucideChevronUp,
+  ChevronDown as LucideChevronDown,
+  Edit2 as LucideEdit2
+} from 'lucide-react';
+
+const Plus = LucidePlus as any;
+const Trash2 = LucideTrash2 as any;
+const GripVertical = LucideGripVertical as any;
+const ChevronUp = LucideChevronUp as any;
+const ChevronDown = LucideChevronDown as any;
+const Edit2 = LucideEdit2 as any;
 import { supabaseAdmin } from '../../lib/supabase-admin';
 
 interface CustomSection {
   id: string;
   section_type: string;
   title: string;
-  content: any;
+  content: string;
   display_order: number;
-  is_visible: boolean;
+  is_active: boolean;
 }
 
 interface CustomSectionsManagerProps {
@@ -19,10 +33,11 @@ export function CustomSectionsManager({ productId }: CustomSectionsManagerProps)
   const [sections, setSections] = useState<CustomSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState<{ title: string; content: string }>({ title: '', content: '' });
   const [newSection, setNewSection] = useState({
     section_type: 'text',
     title: '',
-    content: { text: '', html: '' },
+    content: '',
   });
 
   useEffect(() => {
@@ -61,17 +76,17 @@ export function CustomSectionsManager({ productId }: CustomSectionsManagerProps)
           title: newSection.title,
           content: newSection.content,
           display_order: sections.length,
-          is_visible: true,
+          is_active: true,
         });
 
       if (error) throw error;
-      
+
       setNewSection({
         section_type: 'text',
         title: '',
-        content: { text: '', html: '' },
+        content: '',
       });
-      
+
       loadSections();
     } catch (error: any) {
       console.error('Error adding section:', error);
@@ -93,7 +108,7 @@ export function CustomSectionsManager({ productId }: CustomSectionsManagerProps)
     }
   }
 
-  async function updateSection(id: string, updates: Partial<CustomSection>) {
+  async function updateSection(id: string, updates: Partial<Omit<CustomSection, 'id'>>) {
     try {
       const { error } = await supabaseAdmin
         .from('product_custom_sections')
@@ -107,8 +122,8 @@ export function CustomSectionsManager({ productId }: CustomSectionsManagerProps)
     }
   }
 
-  async function toggleVisibility(id: string, isVisible: boolean) {
-    await updateSection(id, { is_visible: !isVisible });
+  async function toggleVisibility(id: string, isActive: boolean) {
+    await updateSection(id, { is_active: !isActive });
   }
 
   async function moveUp(index: number) {
@@ -127,22 +142,26 @@ export function CustomSectionsManager({ productId }: CustomSectionsManagerProps)
 
   async function reorderSections(newSections: CustomSection[]) {
     try {
-      const updates = newSections.map((section, index) => ({
-        id: section.id,
-        display_order: index,
-      }));
-
-      for (const update of updates) {
+      for (let i = 0; i < newSections.length; i++) {
         await supabaseAdmin
           .from('product_custom_sections')
-          .update({ display_order: update.display_order })
-          .eq('id', update.id);
+          .update({ display_order: i })
+          .eq('id', newSections[i].id);
       }
-
       loadSections();
     } catch (error) {
       console.error('Error reordering sections:', error);
     }
+  }
+
+  function startEditing(section: CustomSection) {
+    setEditingId(section.id);
+    setEditContent({ title: section.title, content: section.content });
+  }
+
+  async function saveEdit(id: string) {
+    await updateSection(id, { title: editContent.title, content: editContent.content });
+    setEditingId(null);
   }
 
   if (loading) {
@@ -153,7 +172,7 @@ export function CustomSectionsManager({ productId }: CustomSectionsManagerProps)
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Adicionar Nova Seção</h3>
-        
+
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -167,7 +186,6 @@ export function CustomSectionsManager({ productId }: CustomSectionsManagerProps)
               >
                 <option value="text">Texto</option>
                 <option value="html">HTML Customizado</option>
-                <option value="testimonials">Depoimentos</option>
                 <option value="comparison">Comparação</option>
                 <option value="cta">Call to Action</option>
               </select>
@@ -192,11 +210,8 @@ export function CustomSectionsManager({ productId }: CustomSectionsManagerProps)
               Conteúdo
             </label>
             <textarea
-              value={newSection.content.text}
-              onChange={(e) => setNewSection({ 
-                ...newSection, 
-                content: { ...newSection.content, text: e.target.value } 
-              })}
+              value={newSection.content}
+              onChange={(e) => setNewSection({ ...newSection, content: e.target.value })}
               placeholder="Digite o conteúdo da seção..."
               rows={6}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
@@ -230,7 +245,7 @@ export function CustomSectionsManager({ productId }: CustomSectionsManagerProps)
             <div
               key={section.id}
               className={`bg-white rounded-lg shadow-sm p-6 border ${
-                section.is_visible ? 'border-gray-200' : 'border-gray-300 opacity-60'
+                section.is_active ? 'border-gray-200' : 'border-gray-300 opacity-60'
               }`}
             >
               <div className="flex items-start gap-4">
@@ -257,46 +272,25 @@ export function CustomSectionsManager({ productId }: CustomSectionsManagerProps)
                     <>
                       <input
                         type="text"
-                        value={section.title}
-                        onChange={(e) => {
-                          const updated = sections.map((s) =>
-                            s.id === section.id ? { ...s, title: e.target.value } : s
-                          );
-                          setSections(updated);
-                        }}
+                        value={editContent.title}
+                        onChange={(e) => setEditContent({ ...editContent, title: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                       />
                       <textarea
-                        value={section.content.text || ''}
-                        onChange={(e) => {
-                          const updated = sections.map((s) =>
-                            s.id === section.id 
-                              ? { ...s, content: { ...s.content, text: e.target.value } } 
-                              : s
-                          );
-                          setSections(updated);
-                        }}
+                        value={editContent.content}
+                        onChange={(e) => setEditContent({ ...editContent, content: e.target.value })}
                         rows={6}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
                       />
                       <div className="flex gap-2">
                         <button
-                          onClick={() => {
-                            updateSection(section.id, {
-                              title: section.title,
-                              content: section.content,
-                            });
-                            setEditingId(null);
-                          }}
+                          onClick={() => saveEdit(section.id)}
                           className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
                         >
                           Salvar
                         </button>
                         <button
-                          onClick={() => {
-                            loadSections();
-                            setEditingId(null);
-                          }}
+                          onClick={() => setEditingId(null)}
                           className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm"
                         >
                           Cancelar
@@ -311,26 +305,26 @@ export function CustomSectionsManager({ productId }: CustomSectionsManagerProps)
                           {section.section_type}
                         </span>
                       </div>
-                      
+
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">
-                          {section.content.text || 'Sem conteúdo'}
+                          {section.content || 'Sem conteúdo'}
                         </pre>
                       </div>
-                      
+
                       <div className="flex items-center gap-4 pt-2">
-                        <label className="flex items-center gap-2 text-sm">
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={section.is_visible}
-                            onChange={() => toggleVisibility(section.id, section.is_visible)}
+                            checked={section.is_active}
+                            onChange={() => toggleVisibility(section.id, section.is_active)}
                             className="rounded"
                           />
                           Visível
                         </label>
 
                         <button
-                          onClick={() => setEditingId(section.id)}
+                          onClick={() => startEditing(section)}
                           className="ml-auto text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
                         >
                           <Edit2 className="w-3 h-3" />

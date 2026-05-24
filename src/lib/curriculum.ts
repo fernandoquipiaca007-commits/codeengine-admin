@@ -16,8 +16,11 @@ export interface CourseLesson {
   title: string;
   description?: string;
   display_order: number;
+  lesson_type: 'video' | 'audio' | 'link';
   video_storage_path?: string;
   video_duration_seconds?: number;
+  audio_storage_path?: string;
+  external_url?: string;
   is_preview: boolean;
   is_active: boolean;
 }
@@ -71,16 +74,24 @@ export async function deleteModule(moduleId: string) {
 export async function saveLesson(
   productId: string,
   lesson: Partial<CourseLesson> & { title: string },
-  videoFile?: File
+  mediaFile?: File
 ) {
   let videoPath = lesson.video_storage_path;
+  let audioPath = lesson.audio_storage_path;
   let duration = lesson.video_duration_seconds || 0;
+  const lessonType = lesson.lesson_type || 'video';
 
-  if (videoFile) {
+  if (mediaFile) {
     const lessonId = lesson.id || crypto.randomUUID();
-    const path = `${productId}/lessons/${lessonId}/${videoFile.name}`;
-    videoPath = await uploadFile(STORAGE_BUCKETS.EBOOKS_PRIVATE.name, path, videoFile);
-    duration = await getVideoDuration(videoFile);
+    const path = `${productId}/lessons/${lessonId}/${mediaFile.name}`;
+
+    if (lessonType === 'audio') {
+      audioPath = await uploadFile(STORAGE_BUCKETS.EBOOKS_PRIVATE.name, path, mediaFile);
+      duration = await getMediaDuration(mediaFile);
+    } else {
+      videoPath = await uploadFile(STORAGE_BUCKETS.EBOOKS_PRIVATE.name, path, mediaFile);
+      duration = await getMediaDuration(mediaFile);
+    }
   }
 
   const row = {
@@ -89,8 +100,11 @@ export async function saveLesson(
     title: lesson.title,
     description: lesson.description || '',
     display_order: lesson.display_order ?? 0,
+    lesson_type: lessonType,
     video_storage_path: videoPath,
     video_duration_seconds: duration,
+    audio_storage_path: audioPath,
+    external_url: lesson.external_url || null,
     is_preview: lesson.is_preview ?? false,
     is_active: true,
     updated_at: new Date().toISOString(),
@@ -130,16 +144,17 @@ export async function reorderLessons(lessons: { id: string; display_order: numbe
   }
 }
 
-function getVideoDuration(file: File): Promise<number> {
+function getMediaDuration(file: File): Promise<number> {
   return new Promise((resolve) => {
-    const video = document.createElement('video');
-    video.preload = 'metadata';
-    video.onloadedmetadata = () => {
-      URL.revokeObjectURL(video.src);
-      resolve(Math.round(video.duration) || 0);
+    const isAudio = file.type.startsWith('audio/');
+    const el = document.createElement(isAudio ? 'audio' : 'video') as HTMLMediaElement;
+    el.preload = 'metadata';
+    el.onloadedmetadata = () => {
+      URL.revokeObjectURL(el.src);
+      resolve(Math.round(el.duration) || 0);
     };
-    video.onerror = () => resolve(0);
-    video.src = URL.createObjectURL(file);
+    el.onerror = () => resolve(0);
+    el.src = URL.createObjectURL(file);
   });
 }
 

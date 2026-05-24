@@ -50,13 +50,12 @@ export default function FeaturedProducts() {
     setLoading(true);
     try {
       const [featuredRes, productsRes] = await Promise.all([
-        fetchFeaturedProducts(),
-        getProducts({ status: 'active' }),
+        fetchFeaturedProducts() as any,
+        getProducts({ status: 'active' }) as any,
       ]);
-      if (featuredRes.error) throw featuredRes.error;
       if (productsRes.error) throw productsRes.error;
 
-      setItems((featuredRes.data as FeaturedProductRow[]) || []);
+      setItems((featuredRes as FeaturedProductRow[]) || []);
       setProducts(productsRes.data || []);
     } catch (err) {
       notifyError(err, 'load', 'featured-products');
@@ -91,10 +90,21 @@ export default function FeaturedProducts() {
     setEditing(null);
     setShowForm(true);
     setCoverFile(undefined);
+
+    // Scan for first vacant position slot in [0, 1, 2]
+    const occupiedPositions = items.map((item) => item.order_position);
+    let vacantPosition = 0;
+    for (let pos = 0; pos <= 2; pos++) {
+      if (!occupiedPositions.includes(pos)) {
+        vacantPosition = pos;
+        break;
+      }
+    }
+
     if (first) {
       setForm({
         product_id: first.id,
-        order_position: Math.min(items.length, 2),
+        order_position: vacantPosition,
         custom_title: first.title,
         custom_subtitle: first.tags?.[0]?.toUpperCase() ?? 'PRODUTO',
         custom_description: shortDescription(first.description),
@@ -167,8 +177,8 @@ export default function FeaturedProducts() {
       const { error } = await upsertFeaturedProduct({
         id: editing?.id,
         ...form,
-        custom_cover: coverUrl || null,
-      });
+        custom_cover: coverUrl || undefined,
+      }) as any;
       if (error) throw error;
 
       notifySuccess('featuredSaved');
@@ -186,7 +196,7 @@ export default function FeaturedProducts() {
   async function handleDelete(id: string) {
     if (!confirm('Remover este destaque da Home?')) return;
     try {
-      const { error } = await deleteFeaturedProduct(id);
+      const { error } = await deleteFeaturedProduct(id) as any;
       if (error) throw error;
       notifySuccess('featuredDeleted');
       await load();
@@ -253,7 +263,7 @@ export default function FeaturedProducts() {
                 onClick={() => handleDelete(row.id)}
                 className="px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
               >
-                Excluir
+                Remover dos Destaques
               </button>
             </div>
           </div>
@@ -301,7 +311,7 @@ export default function FeaturedProducts() {
                 <span className="text-gray-400">Slug:</span> {slugify(selectedProduct.title)}
               </p>
               <p>
-                <span className="text-gray-400">Preço:</span> R$ {selectedProduct.price}
+                <span className="text-gray-400">Preço:</span> $ {selectedProduct.price}
               </p>
             </div>
           )}

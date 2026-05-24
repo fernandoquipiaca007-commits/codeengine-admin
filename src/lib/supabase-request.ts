@@ -88,7 +88,7 @@ export async function executeWithRetry<T>(
     }
 
     try {
-      const result = await withTimeout(operation(), timeoutMs, context);
+      const result = await withTimeout(Promise.resolve(operation()), timeoutMs, context);
 
       if (!result.error) {
         if (result.data === null) {

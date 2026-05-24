@@ -9,6 +9,7 @@ interface ProductTableProps {
   onDelete: (product: Product) => void;
   onCustomize?: (product: Product) => void;
   onSyncComplete?: () => void;
+  onChangeStatus?: (productId: string, newStatus: 'draft' | 'active' | 'archived') => void;
   loading?: boolean;
 }
 
@@ -19,6 +20,7 @@ export default function ProductTable({
   onDelete,
   onCustomize,
   onSyncComplete,
+  onChangeStatus,
   loading = false,
 }: ProductTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -344,6 +346,17 @@ export default function ProductTable({
                   </td>
                   <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                     <div className="flex items-center justify-end gap-3">
+                      {onChangeStatus && (
+                        <select
+                          value={product.status}
+                          onChange={(e) => onChangeStatus(product.id, e.target.value as any)}
+                          className="block w-28 rounded-md border-gray-300 text-xs focus:border-primary-500 focus:ring-primary-500 py-1 pl-2 pr-6"
+                        >
+                          <option value="draft">Rascunho</option>
+                          <option value="active">Publicar</option>
+                          <option value="archived">Arquivar</option>
+                        </select>
+                      )}
                       <StripeSync product={product} onSyncComplete={onSyncComplete} />
                       {onCustomize && (
                         <button

@@ -4,7 +4,7 @@ import { useAdminAnalytics } from '../hooks/useAdminAnalytics';
 import { formatCurrency } from '../lib/analytics';
 
 export default function Dashboard() {
-  const { data, loading: analyticsLoading } = useAdminAnalytics();
+  const { data, loading: analyticsLoading, error: analyticsError, warning: analyticsWarning } = useAdminAnalytics();
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -67,6 +67,16 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid — realtime via useAdminAnalytics */}
+      {analyticsError && (
+        <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          Falha ao carregar métricas do dashboard: {analyticsError}
+        </div>
+      )}
+      {analyticsWarning && !analyticsError && (
+        <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {analyticsWarning}
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5">

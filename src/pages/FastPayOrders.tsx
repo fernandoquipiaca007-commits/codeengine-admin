@@ -4,10 +4,36 @@
  */
 import { useState, useEffect } from 'react';
 import {
-  Clock, CheckCircle, XCircle, Search, Filter,
-  RefreshCw, Loader2, Eye, TrendingUp, DollarSign,
-  Package, AlertCircle, Settings, ToggleLeft, ToggleRight,
+  Clock as LucideClock,
+  CheckCircle as LucideCheckCircle,
+  XCircle as LucideXCircle,
+  Search as LucideSearch,
+  Filter as LucideFilter,
+  RefreshCw as LucideRefreshCw,
+  Loader2 as LucideLoader2,
+  Eye as LucideEye,
+  DollarSign as LucideDollarSign,
+  Package as LucidePackage,
+  AlertCircle as LucideAlertCircle,
+  Settings as LucideSettings,
+  ToggleLeft as LucideToggleLeft,
+  ToggleRight as LucideToggleRight,
 } from 'lucide-react';
+
+const Clock = LucideClock as any;
+const CheckCircle = LucideCheckCircle as any;
+const XCircle = LucideXCircle as any;
+const Search = LucideSearch as any;
+const Filter = LucideFilter as any;
+const RefreshCw = LucideRefreshCw as any;
+const Loader2 = LucideLoader2 as any;
+const Eye = LucideEye as any;
+const DollarSign = LucideDollarSign as any;
+const Package = LucidePackage as any;
+const AlertCircle = LucideAlertCircle as any;
+const Settings = LucideSettings as any;
+const ToggleLeft = LucideToggleLeft as any;
+const ToggleRight = LucideToggleRight as any;
 import { OrderDetailModal } from '../components/fastpay/OrderDetailModal';
 
 interface FastPayOrder {
@@ -51,74 +77,109 @@ export default function FastPayOrders() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const configError = !ADMIN_KEY
+    ? 'VITE_ADMIN_API_KEY não configurada. A aba FastPay não consegue carregar dados administrativos.'
+    : null;
 
   useEffect(() => {
     fetchAll();
   }, [statusFilter]);
 
   const fetchAll = async () => {
+    if (configError) {
+      setErrorMessage(configError);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    await Promise.all([fetchOrders(), fetchStats(), fetchSettings()]);
+    setErrorMessage(null);
+    await Promise.allSettled([fetchOrders(), fetchStats(), fetchSettings()]);
     setLoading(false);
   };
+
+  async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(`${BACKEND_URL}${path}`, {
+      ...init,
+      headers: {
+        ...(init?.headers || {}),
+        'x-admin-key': ADMIN_KEY,
+      },
+    });
+
+    let payload: any = null;
+    try {
+      payload = await res.json();
+    } catch {
+      throw new Error(`Resposta inválida do servidor (${res.status})`);
+    }
+
+    if (!res.ok || !payload?.success) {
+      const detail =
+        payload?.error ||
+        payload?.message ||
+        `Falha na requisição (${res.status})`;
+      throw new Error(detail);
+    }
+
+    return payload as T;
+  }
 
   const fetchOrders = async () => {
     try {
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (searchQuery.trim()) params.set('search', searchQuery.trim());
-
-      const res = await fetch(`${BACKEND_URL}/api/admin/fastpay/orders?${params}`, {
-        headers: { 'x-admin-key': ADMIN_KEY },
-      });
-      const data = await res.json();
-      if (data.success) setOrders(data.orders || []);
+      const data = await apiRequest<{ success: true; orders: FastPayOrder[] }>(
+        `/api/admin/fastpay/orders?${params.toString()}`
+      );
+      setOrders(data.orders || []);
     } catch (err) {
       console.error('Failed to fetch orders:', err);
+      setOrders([]);
+      setErrorMessage(err instanceof Error ? err.message : 'Falha ao carregar pedidos FastPay.');
     }
   };
 
   const fetchStats = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/fastpay/stats`, {
-        headers: { 'x-admin-key': ADMIN_KEY },
-      });
-      const data = await res.json();
-      if (data.success) setStats(data.stats);
+      const data = await apiRequest<{ success: true; stats: FastPayStats }>('/api/admin/fastpay/stats');
+      setStats(data.stats);
     } catch (err) {
       console.error('Failed to fetch stats:', err);
+      setStats(null);
+      setErrorMessage(err instanceof Error ? err.message : 'Falha ao carregar estatísticas FastPay.');
     }
   };
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/fastpay/settings`, {
-        headers: { 'x-admin-key': ADMIN_KEY },
-      });
-      const data = await res.json();
-      if (data.success) setSettings(data.settings);
+      const data = await apiRequest<{ success: true; settings: FastPaySettings }>('/api/admin/fastpay/settings');
+      setSettings(data.settings);
     } catch (err) {
       console.error('Failed to fetch settings:', err);
+      setSettings(null);
+      setErrorMessage(err instanceof Error ? err.message : 'Falha ao carregar configurações FastPay.');
     }
   };
 
   const updateSettings = async (updates: Partial<FastPaySettings>) => {
     setSettingsLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/fastpay/settings`, {
+      await apiRequest<{ success: true }>('/api/admin/fastpay/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-key': ADMIN_KEY,
         },
         body: JSON.stringify(updates),
       });
-      const data = await res.json();
-      if (data.success) {
-        setSettings(prev => prev ? { ...prev, ...updates } : prev);
-      }
+      setSettings(prev => prev ? { ...prev, ...updates } : prev);
+      setErrorMessage(null);
     } catch (err) {
       console.error('Failed to update settings:', err);
+      setErrorMessage(err instanceof Error ? err.message : 'Falha ao atualizar configurações FastPay.');
     } finally {
       setSettingsLoading(false);
     }
@@ -172,6 +233,12 @@ export default function FastPayOrders() {
           </button>
         </div>
       </div>
+
+      {errorMessage && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage}
+        </div>
+      )}
 
       {/* Settings Panel */}
       {showSettings && settings && (

@@ -3,6 +3,7 @@ import { Category } from '../types/admin';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../lib/categories';
 import CategoryForm, { CategoryFormData } from '../components/categories/CategoryForm';
 import CategoryList from '../components/categories/CategoryList';
+import SubcategoriesModal from '../components/categories/SubcategoriesModal';
 
 type ViewMode = 'list' | 'create' | 'edit';
 
@@ -14,6 +15,7 @@ export default function Categories() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [selectedCategoryForSub, setSelectedCategoryForSub] = useState<Category | null>(null);
 
   useEffect(() => {
     loadCategories();
@@ -226,9 +228,17 @@ export default function Categories() {
           categories={categories}
           onEdit={handleEditClick}
           onDelete={handleDeleteClick}
+          onManageSubcategories={(category) => setSelectedCategoryForSub(category)}
           loading={loading}
         />
       </div>
+
+      {selectedCategoryForSub && (
+        <SubcategoriesModal
+          category={selectedCategoryForSub}
+          onClose={() => setSelectedCategoryForSub(null)}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && categoryToDelete && (

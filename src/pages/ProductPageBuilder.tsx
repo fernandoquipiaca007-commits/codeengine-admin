@@ -1,23 +1,34 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
-  ArrowLeft, 
-  Save, 
-  Eye, 
-  Settings, 
-  Video, 
-  HelpCircle, 
-  Gift, 
-  Tag, 
-  Megaphone,
-  Image,
-  Layout
+  ArrowLeft as LucideArrowLeft, 
+  Save as LucideSave, 
+  Eye as LucideEye, 
+  Settings as LucideSettings, 
+  Video as LucideVideo, 
+  HelpCircle as LucideHelpCircle, 
+  Gift as LucideGift, 
+  Tag as LucideTag, 
+  Megaphone as LucideMegaphone,
+  Image as LucideImage,
+  Layout as LucideLayout
 } from 'lucide-react';
+
+const ArrowLeft = LucideArrowLeft as any;
+const Save = LucideSave as any;
+const Eye = LucideEye as any;
+const Settings = LucideSettings as any;
+const Video = LucideVideo as any;
+const HelpCircle = LucideHelpCircle as any;
+const Gift = LucideGift as any;
+const Tag = LucideTag as any;
+const Megaphone = LucideMegaphone as any;
+const Image = LucideImage as any;
+const Layout = LucideLayout as any;
 import { supabaseAdmin } from '../lib/supabase-admin';
 import { executeWithRetry } from '../lib/supabase-request';
 import { FAQManager } from '../components/products/FAQManager';
 import { VideoManager } from '../components/products/VideoManager';
-import { BenefitsManager } from '../components/products/BenefitsManager';
 import { BonusesManager } from '../components/products/BonusesManager';
 import { CouponsManager } from '../components/products/CouponsManager';
 import { CampaignsManager } from '../components/products/CampaignsManager';
@@ -207,6 +218,7 @@ export function ProductPageBuilder() {
     { id: 'coupons', label: 'Cupons', icon: Tag },
     { id: 'campaigns', label: 'Campanhas', icon: Megaphone },
     { id: 'media', label: 'Mídia', icon: Image },
+    { id: 'sections', label: 'Secções', icon: Settings },
   ];
 
   const sectionsEnabled = product.page_layout_config?.sections_enabled || {};
@@ -298,7 +310,7 @@ export function ProductPageBuilder() {
                 Ative ou desative seções da página do produto. Arraste para reordenar.
               </p>
 
-              {Object.keys(sectionsEnabled).map((section) => (
+              {Object.keys(sectionsEnabled).filter(s => s !== 'testimonials').map((section) => (
                 <div
                   key={section}
                   className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
@@ -408,8 +420,7 @@ export function ProductPageBuilder() {
         {activeTab === 'coupons' && product && <CouponsManager productId={product.id} />}
         {activeTab === 'campaigns' && product && <CampaignsManager productId={product.id} />}
         {activeTab === 'media' && product && <MediaGallery productId={product.id} />}
-        
-        {/* Coming soon tabs - None remaining! */}
+        {activeTab === 'sections' && product && <CustomSectionsManager productId={product.id} />}
       </div>
     </div>
   );

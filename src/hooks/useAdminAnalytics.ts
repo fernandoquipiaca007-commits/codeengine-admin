@@ -14,6 +14,10 @@ const emptySnapshot: AdminAnalyticsSnapshot = {
   totalProducts: 0,
   salesToday: 0,
   revenueToday: 0,
+  aoaRevenue: 0,
+  aoaSales: 0,
+  aoaRevenueToday: 0,
+  aoaSalesToday: 0,
   visitorsToday: 0,
   totalDownloads: 0,
   totalFavorites: 0,
@@ -21,25 +25,32 @@ const emptySnapshot: AdminAnalyticsSnapshot = {
   unreadNotifications: 0,
   conversionRate: 0,
   avgOrderValue: 0,
+  avgOrderValueAoa: 0,
   topProductTitle: null,
   topProducts: [],
   revenueByDay: [],
   recentOrders: [],
+  dataWarnings: [],
 };
 
 export function useAdminAnalytics() {
   const [data, setData] = useState<AdminAnalyticsSnapshot>(emptySnapshot);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
+    setWarning(null);
     try {
       const snapshot = await fetchAdminAnalytics();
       setData(snapshot);
+      if (snapshot.dataWarnings.length > 0) {
+        setWarning(`Algumas métricas podem estar incompletas: ${snapshot.dataWarnings.join(' | ')}`);
+      }
       setLastUpdated(new Date());
     } catch (err) {
       console.error('[analytics] refresh failed:', err);
@@ -104,5 +115,5 @@ export function useAdminAnalytics() {
     };
   }, [refresh, scheduleRefresh]);
 
-  return { data, loading, error, lastUpdated, refresh };
+  return { data, loading, error, warning, lastUpdated, refresh };
 }

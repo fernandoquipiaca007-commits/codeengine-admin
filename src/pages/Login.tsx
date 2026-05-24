@@ -136,6 +136,16 @@ export default function Login() {
                 'Entrar'
               )}
             </button>
+            <div className="mt-4 text-center">
+              <a
+                href={`${window.location.protocol}//${window.location.hostname}:3040/?screen=auth`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Esqueceu sua senha? Recuperar na plataforma
+              </a>
+            </div>
           </form>
 
           <div className="mt-6 pt-6 border-t border-gray-700">

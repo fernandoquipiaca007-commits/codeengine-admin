@@ -131,6 +131,25 @@ export default function Products() {
     setSelectedProduct(null);
   }
 
+  async function handleChangeStatus(productId: string, newStatus: 'draft' | 'active' | 'archived') {
+    try {
+      const { error } = await supabaseAdmin
+        .from('products')
+        .update({ status: newStatus })
+        .eq('id', productId);
+
+      if (error) throw error;
+      
+      setProducts(products.map(p => 
+        p.id === productId ? { ...p, status: newStatus } : p
+      ));
+      notifySuccess('productUpdated');
+    } catch (err: any) {
+      console.error('Error changing status:', err);
+      showError('Erro ao atualizar', err.message);
+    }
+  }
+
   // Render based on view mode
   if (viewMode === 'create') {
     return (
@@ -207,6 +226,7 @@ export default function Products() {
           onDelete={handleDeleteClick}
           onCustomize={(product) => navigate(`/products/builder?id=${product.id}`)}
           onSyncComplete={loadData}
+          onChangeStatus={handleChangeStatus}
           loading={loading}
         />
       </div>

@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import {
+  Plus as LucidePlus,
+  Trash2 as LucideTrash2
+} from 'lucide-react';
+
+const Plus = LucidePlus as any;
+const Trash2 = LucideTrash2 as any;
 import { supabaseAdmin } from '../../lib/supabase-admin';
 
 interface Benefit {
