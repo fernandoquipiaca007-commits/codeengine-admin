@@ -1,0 +1,4 @@
+## 2025-05-15 - Unsafe Client-Side Service Role Key Exposure
+**Vulnerability:** The application was configured to potentially use the Supabase `SERVICE_ROLE_KEY` on the frontend. This key bypasses Row Level Security (RLS) and provides full administrative access to the database and storage.
+**Learning:** Even if the key is intended for "admin only" areas of a frontend application, any code running in the user's browser can be inspected, and environment variables can be extracted. Frontend applications should never possess or use the service role key.
+**Prevention:** Always enforce RLS on the client side using the `anon` key and the user's JWT. Administrative operations that require bypassing RLS should be performed in a secure, server-side environment (e.g., Supabase Edge Functions or a dedicated backend) where the service role key can be kept secret.

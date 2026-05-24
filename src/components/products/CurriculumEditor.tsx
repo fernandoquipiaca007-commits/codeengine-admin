@@ -166,7 +166,7 @@ export function CurriculumEditor({ productId, onChange }: CurriculumEditorProps)
                 className="text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">
-                MP4/WebM/MOV até 2GB (bucket ebooks-private). Se falhar, confirme VITE_SUPABASE_SERVICE_ROLE_KEY no admin.
+                MP4/WebM/MOV até 2GB (bucket ebooks-private).
               </p>
             </div>
           </div>

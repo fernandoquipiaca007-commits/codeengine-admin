@@ -2,7 +2,6 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl) {
   throw new Error('Missing VITE_SUPABASE_URL environment variable');
@@ -11,19 +10,6 @@ if (!supabaseUrl) {
 if (!supabaseAnonKey) {
   throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable');
 }
-
-if (!supabaseServiceRoleKey) {
-  console.warn(
-    '[supabase] VITE_SUPABASE_SERVICE_ROLE_KEY missing — admin data ops use anon client with user session'
-  );
-}
-
-/** Isolated storage so service-role client never reads/writes auth tokens */
-const noopAuthStorage = {
-  getItem: () => null,
-  setItem: () => {},
-  removeItem: () => {},
-};
 
 const authClientOptions = {
   auth: {
@@ -53,28 +39,12 @@ export function getAuthClient(): SupabaseClient {
 }
 
 /**
- * Singleton for database/storage operations (service role when available).
- * Never use .auth on this client.
+ * Singleton for database/storage operations.
+ * Uses the authenticated client to ensure RLS is enforced.
  */
 export function getDataClient(): SupabaseClient {
   if (!dataClientInstance) {
-    if (supabaseServiceRoleKey) {
-      dataClientInstance = createClient(supabaseUrl, supabaseServiceRoleKey, {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-          storage: noopAuthStorage,
-          storageKey: 'codeengine-admin-service-inert',
-        },
-        global: {
-          headers: {
-            'x-client-info': 'codeengine-admin-data',
-          },
-        },
-      });
-    } else {
-      dataClientInstance = getAuthClient();
-    }
+    dataClientInstance = getAuthClient();
   }
   return dataClientInstance;
 }
