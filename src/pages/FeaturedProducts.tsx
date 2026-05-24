@@ -49,14 +49,12 @@ export default function FeaturedProducts() {
   async function load() {
     setLoading(true);
     try {
-      const [featuredRes, productsRes] = await Promise.all([
-        fetchFeaturedProducts(),
-        getProducts({ status: 'active' }),
-      ]);
-      if (featuredRes.error) throw featuredRes.error;
+      const itemsData = (await fetchFeaturedProducts()) as FeaturedProductRow[];
+      const productsRes = await getProducts({ status: 'active' });
+
       if (productsRes.error) throw productsRes.error;
 
-      setItems((featuredRes.data as FeaturedProductRow[]) || []);
+      setItems(itemsData || []);
       setProducts(productsRes.data || []);
     } catch (err) {
       notifyError(err, 'load', 'featured-products');
@@ -164,12 +162,11 @@ export default function FeaturedProducts() {
         coverUrl = selectedProduct.cover_url;
       }
 
-      const { error } = await upsertFeaturedProduct({
+      await upsertFeaturedProduct({
         id: editing?.id,
         ...form,
         custom_cover: coverUrl || null,
       });
-      if (error) throw error;
 
       notifySuccess('featuredSaved');
       setShowForm(false);
@@ -186,8 +183,7 @@ export default function FeaturedProducts() {
   async function handleDelete(id: string) {
     if (!confirm('Remover este destaque da Home?')) return;
     try {
-      const { error } = await deleteFeaturedProduct(id);
-      if (error) throw error;
+      await deleteFeaturedProduct(id);
       notifySuccess('featuredDeleted');
       await load();
     } catch (err) {
@@ -227,7 +223,7 @@ export default function FeaturedProducts() {
           >
             {(row.custom_cover || row.products?.cover_url) && (
               <img
-                src={row.custom_cover || row.products?.cover_url}
+                src={row.custom_cover || row.products?.cover_url || ''}
                 alt=""
                 className="w-16 h-16 rounded-lg object-cover shrink-0"
               />
