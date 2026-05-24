@@ -56,7 +56,7 @@ export default function Login() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Painel CodeEngine Learn</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Painel CodeEngine 1</h1>
           <p className="text-gray-400">Administração da Plataforma</p>
         </div>
 
@@ -130,7 +130,7 @@ export default function Login() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Entrando...
+                   Entrando...
                 </span>
               ) : (
                 'Entrar'
@@ -158,7 +158,7 @@ export default function Login() {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-500">
-            © 2026 CodeEngine Learn. Todos os direitos reservados.
+            © 2026 CodeEngine 1. Todos os direitos reservados.
           </p>
         </div>
       </div>

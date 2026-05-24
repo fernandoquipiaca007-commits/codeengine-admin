@@ -35,6 +35,8 @@ import { CampaignsManager } from '../components/products/CampaignsManager';
 import { CustomSectionsManager } from '../components/products/CustomSectionsManager';
 import { MediaGallery } from '../components/products/MediaGallery';
 
+const STORE_URL = import.meta.env.VITE_STORE_URL || 'http://localhost:3000';
+
 interface Product {
   id: string;
   title: string;
@@ -243,7 +245,7 @@ export function ProductPageBuilder() {
             </div>
             <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3">
               <button
-                onClick={() => window.open(`http://localhost:3000/product?id=${product.id}`, '_blank')}
+                onClick={() => window.open(`${STORE_URL}/product?id=${product.id}`, '_blank')}
                 className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-target"
               >
                 <Eye className="w-4 h-4" />

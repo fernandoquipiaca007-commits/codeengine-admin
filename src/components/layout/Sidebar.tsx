@@ -198,7 +198,7 @@ export default function Sidebar() {
       <div className="flex items-center justify-between px-4 py-3 lg:py-4 border-b border-gray-200">
         <Link to="/" className="text-lg lg:text-xl font-bold text-primary-600 truncate">
           <span className="lg:hidden">CE</span>
-          <span className="hidden lg:inline">CodeEngine</span>
+          <span className="hidden lg:inline">CodeEngine 1</span>
         </Link>
         <button
           onClick={() => setIsOpen(false)}
