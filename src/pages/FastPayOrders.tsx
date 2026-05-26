@@ -137,9 +137,12 @@ export default function FastPayOrders() {
       );
       setOrders(data.orders || []);
     } catch (err) {
-      console.error('Failed to fetch orders:', err);
+      console.error('[FastPayOrders] Failed to fetch orders:', err);
       setOrders([]);
-      setErrorMessage(err instanceof Error ? err.message : 'Falha ao carregar pedidos FastPay.');
+      const detail = err && typeof err === 'object'
+        ? (err as any).message || JSON.stringify(err)
+        : String(err);
+      setErrorMessage(`Falha ao carregar pedidos FastPay: ${detail}`);
     }
   };
 
