@@ -23,6 +23,13 @@ export interface Product {
   status: 'draft' | 'active' | 'archived';
   product_type?: 'file' | 'course' | 'service';
   is_free?: boolean;
+  aoa_price?: number | null;
+  fastpay_link?: string | null;
+  subcategory_id?: string | null;
+  visibility?: 'public' | 'members_only';
+  min_member_level?: string | null;
+  access_duration_days?: number | null;
+  use_shared_content?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -210,6 +217,13 @@ export interface ProductFormData {
   video_file?: File;
   product_file?: File;
   translations?: Record<string, any>;
+  aoa_price?: number;
+  fastpay_link?: string;
+  subcategory_id?: string;
+  visibility?: 'public' | 'members_only';
+  min_member_level?: string;
+  access_duration_days?: number | null;
+  use_shared_content?: boolean;
 }
 
 // File Upload Progress
