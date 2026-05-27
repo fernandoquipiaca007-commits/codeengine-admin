@@ -40,6 +40,7 @@ function App() {
                   <div className="flex flex-1 min-h-0 overflow-hidden">
                   <Sidebar />
                   <main className="flex-1 overflow-y-auto content-safe pb-20 lg:pb-0">
+                    <div className="max-w-[1600px] mx-auto w-full">
                     <Routes>
                       <Route path="/" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/dashboard" element={<Dashboard />} />
@@ -145,6 +146,7 @@ function App() {
                         }
                       />
                     </Routes>
+                    </div>
                   </main>
                   </div>
                 </div>

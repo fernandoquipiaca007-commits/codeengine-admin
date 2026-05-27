@@ -116,26 +116,29 @@ export default function Coupons() {
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8">
-      <div className="mb-8 flex justify-between items-start gap-4 flex-wrap">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Cupons Globais</h1>
-          <p className="text-sm text-gray-600 mt-1">Válidos em qualquer produto da plataforma</p>
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Cupons Globais</h1>
+          <p className="text-base text-gray-500 mt-2">Válidos em qualquer produto da plataforma</p>
         </div>
         <button
           type="button"
           onClick={() => setShowForm((v) => !v)}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md text-sm"
+          className={`inline-flex items-center justify-center px-6 py-3 font-bold rounded-xl shadow-lg transition-all active:scale-95 ${showForm ? 'bg-gray-500 text-white shadow-gray-200' : 'bg-primary-600 text-white shadow-primary-100 hover:bg-primary-700'}`}
         >
-          <Plus className="w-5 h-5 mr-2" />
-          Criar Cupom
+          {showForm ? <Plus className="w-5 h-5 mr-2 rotate-45" /> : <Plus className="w-5 h-5 mr-2" />}
+          {showForm ? 'Cancelar' : 'Criar Cupom'}
         </button>
       </div>
 
       {showForm && (
-        <div className="bg-white border rounded-lg p-6 mb-6 shadow-sm">
-          <h2 className="font-semibold mb-4">Novo cupom</h2>
-          <div className="grid md:grid-cols-2 gap-4">
+        <div className="bg-white border border-gray-100 rounded-2xl p-6 lg:p-8 mb-10 shadow-sm animate-in fade-in slide-in-from-top-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <div className="w-2 h-6 bg-primary-600 rounded-full" />
+            Novo Cupom
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="text-sm font-medium">Código</label>
               <div className="flex gap-2 mt-1">
@@ -198,65 +201,143 @@ export default function Coupons() {
               />
             </div>
           </div>
-          <div className="mt-4 flex gap-2">
-            <button type="button" onClick={() => void addCoupon()} className="px-4 py-2 bg-blue-600 text-white rounded-lg">
-              Salvar
+          <div className="mt-8 flex flex-col sm:flex-row gap-4">
+            <button type="button" onClick={() => void addCoupon()} className="flex-1 px-8 py-4 bg-primary-600 text-white font-bold rounded-xl shadow-lg shadow-primary-100 transition-all active:scale-95">
+              Criar Cupom
             </button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg">
+            <button type="button" onClick={() => setShowForm(false)} className="px-8 py-4 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">
               Cancelar
             </button>
           </div>
         </div>
       )}
 
-      <div className="bg-white border rounded-lg shadow-sm overflow-x-auto">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4 mb-10">
         {loading ? (
-          <p className="p-8 text-center text-gray-500">Carregando...</p>
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          </div>
         ) : coupons.length === 0 ? (
-          <p className="p-8 text-center text-gray-500">Nenhum cupom global.</p>
+          <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+            <p className="text-gray-500 font-medium">Nenhum cupom global encontrado</p>
+          </div>
+        ) : (
+          coupons.map((c) => (
+            <div key={c.id} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+              <div className="flex justify-between items-start mb-4">
+                <div className="font-mono font-black text-lg text-primary-600">{c.code}</div>
+                {(() => { const s = getCouponStatus(c); return <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold uppercase tracking-tight ${s.color}`}>{s.label}</span>; })()}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                <div className="bg-gray-50 rounded-xl p-2.5">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1">Desconto</div>
+                  <div className="text-sm font-black text-gray-900">{c.discount_type === 'percentage' ? `${c.discount_value}%` : `$ ${c.discount_value}`}</div>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-2.5">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1">Uso</div>
+                  <div className="text-sm font-bold text-gray-700">{c.usage_count}/{c.usage_limit}</div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                  Expira em: <span className="text-gray-600 ml-1">{new Date(c.expiration_date).toLocaleDateString('pt-BR')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(c.code);
+                      setCopiedId(c.id);
+                      setTimeout(() => setCopiedId(null), 2000);
+                    }}
+                    className={`p-2 rounded-xl transition-all ${copiedId === c.id ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-400 hover:text-gray-600'}`}
+                  >
+                    {copiedId === c.id ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void deleteCoupon(c.id)}
+                    className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden mb-10">
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          </div>
+        ) : coupons.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-gray-500 font-medium">Nenhum cupom global cadastrado.</p>
+          </div>
         ) : (
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left">Código</th>
-                <th className="px-4 py-3 text-left">Desconto</th>
-                <th className="px-4 py-3 text-left">Usos</th>
-                <th className="px-4 py-3 text-left">Validade</th>
-                <th className="px-4 py-3 text-left">Status</th>
-                <th className="px-4 py-3 text-right">Ações</th>
+            <thead>
+              <tr className="bg-gray-50/50 border-b border-gray-100">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Código</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Desconto</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Uso</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Validade</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {coupons.map((c) => (
-                <tr key={c.id} className="border-t">
-                  <td className="px-4 py-3 font-mono font-semibold">{c.code}</td>
-                  <td className="px-4 py-3">
-                    {c.discount_type === 'percentage' ? `${c.discount_value}%` : `$ ${c.discount_value}`}
+                <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-6 py-4 font-mono font-black text-primary-600 text-base">{c.code}</td>
+                  <td className="px-6 py-4 font-bold text-gray-900">
+                    {c.discount_type === 'percentage' ? (
+                      <span className="px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600">{c.discount_value}%</span>
+                    ) : (
+                      <span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600">$ {c.discount_value}</span>
+                    )}
                   </td>
-                  <td className="px-4 py-3">
-                    {c.usage_count}/{c.usage_limit}
+                  <td className="px-6 py-4 text-gray-600 font-medium">
+                    <span className="text-gray-900 font-bold">{c.usage_count}</span>
+                    <span className="text-gray-400 mx-1">/</span>
+                    {c.usage_limit}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
+                  <td className="px-6 py-4 text-gray-500 font-medium">
                     {new Date(c.expiration_date).toLocaleDateString('pt-BR')}
                   </td>
-                  <td className="px-4 py-3">
-                    {(() => { const s = getCouponStatus(c); return <span className={`text-xs px-2 py-1 rounded-full font-medium ${s.color}`}>{s.label}</span>; })()}
+                  <td className="px-6 py-4">
+                    {(() => { const s = getCouponStatus(c); return <span className={`text-[10px] px-2 py-1 rounded-lg font-bold uppercase tracking-tight ${s.color}`}>{s.label}</span>; })()}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void navigator.clipboard.writeText(c.code);
-                        setCopiedId(c.id);
-                        setTimeout(() => setCopiedId(null), 2000);
-                      }}
-                      className="p-1 mr-1"
-                    >
-                      {copiedId === c.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                    <button type="button" onClick={() => void deleteCoupon(c.id)} className="p-1 text-red-600">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(c.code);
+                          setCopiedId(c.id);
+                          setTimeout(() => setCopiedId(null), 2000);
+                        }}
+                        className={`p-2 rounded-xl transition-all ${copiedId === c.id ? 'bg-green-50 text-green-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                        title="Copiar código"
+                      >
+                        {copiedId === c.id ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void deleteCoupon(c.id)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                        title="Excluir cupom"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

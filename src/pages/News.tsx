@@ -421,31 +421,36 @@ export function News() {
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 overflow-x-hidden">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Notícias</h1>
-          <p className="text-gray-400">Gerencie notícias e atualizações da plataforma</p>
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+            Notícias
+          </h1>
+          <p className="mt-2 text-base text-gray-500">Gerencie notícias e atualizações da plataforma</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          className={`flex items-center gap-2 px-6 py-3 text-white font-bold rounded-xl shadow-lg transition-all active:scale-95 ${showForm ? 'bg-gray-500 shadow-gray-200' : 'bg-primary-600 hover:bg-primary-700 shadow-primary-100'}`}
         >
-          <PlusIcon className="w-5 h-5" />
+          {showForm ? <PlusIcon className="w-5 h-5 rotate-45" /> : <PlusIcon className="w-5 h-5" />}
           {showForm ? 'Cancelar' : 'Nova Notícia'}
         </button>
       </div>
 
       {showForm && (
-        <div className="bg-gray-800 rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold text-white mb-4">
+        <div className="bg-white border border-gray-100 rounded-2xl p-6 lg:p-8 mb-10 shadow-sm">
+          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <div className="w-2 h-6 bg-primary-600 rounded-full" />
             {editingNews ? 'Editar Notícia' : 'Nova Notícia'}
           </h2>
 
           {/* Language Tabs */}
-          <div className="flex items-center gap-2 mb-6 pb-4 border-b border-gray-700">
-            <GlobeIcon className="w-4 h-4 text-gray-400" />
-            <span className="text-sm text-gray-400 mr-2">Idioma:</span>
+          <div className="flex flex-wrap items-center gap-2 mb-8 pb-6 border-b border-gray-100">
+            <div className="flex items-center gap-2 text-sm font-bold text-gray-400 uppercase tracking-wider mr-4">
+              <GlobeIcon className="w-4 h-4" />
+              Idioma:
+            </div>
             {LANGUAGES.map((lang) => (
               <button
                 key={lang}
@@ -465,10 +470,10 @@ export function News() {
                     if (pt.content) setContent(pt.content);
                   }
                 }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
                   activeLang === lang
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    ? 'bg-primary-600 text-white shadow-lg shadow-primary-100 scale-105'
+                    : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                 }`}
               >
                 {LANG_LABELS[lang]}
@@ -479,10 +484,10 @@ export function News() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                   Título ({activeLang.toUpperCase()}) *
                 </label>
                 <input
@@ -499,16 +504,16 @@ export function News() {
                     }
                   }}
                   placeholder={activeLang === 'pt' ? 'Ex: Nova Era da Inteligência Artificial' : `Title in ${LANG_LABELS[activeLang]}`}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium"
                   required={activeLang === 'pt'}
                 />
-                {activeLang === 'pt' && <p className="text-xs text-gray-400 mt-1">O slug será gerado automaticamente</p>}
-                {activeLang !== 'pt' && <p className="text-xs text-gray-400 mt-1">Deixe vazio para usar o conteúdo em Português como fallback</p>}
+                {activeLang === 'pt' && <p className="text-[10px] text-gray-400 mt-2 font-bold italic">O slug será gerado automaticamente</p>}
+                {activeLang !== 'pt' && <p className="text-[10px] text-gray-400 mt-2 font-bold italic">Deixe vazio para usar o conteúdo em Português como fallback</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Slug ({activeLang.toUpperCase()}) * <span className="text-gray-500">(URL amigável)</span>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                  Slug ({activeLang.toUpperCase()}) * <span className="text-gray-400 lowercase">(URL amigável)</span>
                 </label>
                 <input
                   type="text"
@@ -524,20 +529,20 @@ export function News() {
                     }
                   }}
                   placeholder="nova-era-inteligencia-artificial"
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium"
                   required={activeLang === 'pt'}
                 />
-                <p className="text-xs text-gray-400 mt-1">Apenas letras minúsculas, números e hífens</p>
+                <p className="text-[10px] text-gray-400 mt-2 font-bold italic">Apenas letras minúsculas, números e hífens</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                   Categoria *
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold"
                   required
                 >
                   {categories.map((cat) => (
@@ -682,17 +687,17 @@ export function News() {
               <p className="text-xs text-gray-400 mt-1">Use Markdown para formatação: # para títulos, ** para negrito, - para listas</p>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-100">
               <button
                 type="submit"
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                className="flex-1 px-8 py-4 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl shadow-lg shadow-primary-100 transition-all active:scale-95"
               >
-                {editingNews ? 'Atualizar' : 'Criar'} Notícia
+                {editingNews ? 'Atualizar' : 'Publicar'} Notícia
               </button>
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                className="px-8 py-4 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-xl transition-all"
               >
                 Cancelar
               </button>
@@ -701,112 +706,175 @@ export function News() {
         </div>
       )}
 
-      {/* News List */}
-      <div className="bg-gray-800 rounded-lg overflow-hidden">
+      {/* Mobile News Cards */}
+      <div className="lg:hidden space-y-4 mb-10">
+        {news.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+            <p className="text-gray-400 font-medium">Nenhuma notícia cadastrada</p>
+          </div>
+        ) : (
+          news.map((article) => (
+            <div key={article.id} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm overflow-hidden">
+              <div className="flex gap-4 mb-4">
+                {article.thumbnail_url && (
+                  <img
+                    src={article.thumbnail_url}
+                    alt={article.title}
+                    className="w-20 h-20 object-cover rounded-xl shadow-inner"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                    <span className={`inline-flex px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-tight ${getStatusColor(article.status)}`}>
+                      {getStatusLabel(article.status)}
+                    </span>
+                    {article.tags?.includes('Destaque') && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold">
+                        ★ Destaque
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-bold text-gray-900 line-clamp-2 leading-tight">{article.title}</h3>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                <div className="bg-gray-50 rounded-xl p-2.5">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1 flex items-center gap-1">
+                    <TrendingIcon className="w-3 h-3" /> Categoria
+                  </div>
+                  <div className="text-xs font-bold text-gray-700">{article.category}</div>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-2.5">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1 flex items-center gap-1">
+                    <CalendarIcon className="w-3 h-3" /> Data
+                  </div>
+                  <div className="text-xs font-bold text-gray-700">
+                    {article.published_at ? new Date(article.published_at).toLocaleDateString('pt-BR') : '—'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1 text-gray-400">
+                    <EyeIcon className="w-4 h-4" />
+                    <span className="text-xs font-bold">{article.views}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-red-400">
+                    <HeartIcon className="w-4 h-4 fill-current" />
+                    <span className="text-xs font-bold">{article.likes_count || 0}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleEdit(article)}
+                    className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
+                  >
+                    <EditIcon className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(article.id)}
+                    className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* News Table - Desktop */}
+      <div className="hidden lg:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-10">
         <table className="w-full">
-          <thead className="bg-gray-900">
-            <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Notícia
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Categoria
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Views
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Likes
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Data
-              </th>
-              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Ações
-              </th>
+          <thead>
+            <tr className="bg-gray-50/50 border-b border-gray-100">
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Notícia</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Categoria</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Engajamento</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Data</th>
+              <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-700">
+          <tbody className="divide-y divide-gray-100">
             {news.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
+                <td colSpan={6} className="px-6 py-16 text-center text-gray-500 font-medium">
                   Nenhuma notícia cadastrada
                 </td>
               </tr>
             ) : (
               news.map((article) => (
-                <tr key={article.id} className="hover:bg-gray-700/50 transition-colors">
+                <tr key={article.id} className="hover:bg-gray-50/50 transition-colors group">
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                       {article.thumbnail_url && (
                         <img
                           src={article.thumbnail_url}
                           alt={article.title}
-                          className="w-16 h-16 object-cover rounded-lg"
+                          className="w-14 h-14 object-cover rounded-xl shadow-sm border border-gray-100"
                         />
                       )}
-                      <div>
-                        <div className="flex items-center gap-2 font-semibold text-white">
-                          <span>{article.title}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-bold text-gray-900 truncate group-hover:text-primary-600 transition-colors">{article.title}</span>
                           {article.tags?.includes('Destaque') && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400 text-xs font-semibold">
-                              ★ Destaque
+                            <span className="px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600 text-[10px] font-bold uppercase tracking-tight">
+                              Destaque
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-gray-400 line-clamp-1">{article.excerpt}</div>
+                        <div className="text-xs text-gray-500 line-clamp-1 max-w-md">{article.excerpt}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-semibold">
-                      <TrendingIcon className="w-3 h-3" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-50 text-blue-600 text-xs font-bold">
+                      <TrendingIcon className="w-3.5 h-3.5" />
                       {article.category}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(article.status)}`}>
+                    <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-bold ${getStatusColor(article.status)}`}>
                       {getStatusLabel(article.status)}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <EyeIcon className="w-4 h-4" />
-                      <span>{article.views}</span>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1.5 text-gray-500" title="Visualizações">
+                        <EyeIcon className="w-4 h-4" />
+                        <span className="text-sm font-bold">{article.views}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-red-500" title="Curtidas">
+                        <HeartIcon className="w-4 h-4 fill-current" />
+                        <span className="text-sm font-bold">{article.likes_count || 0}</span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-red-400 font-semibold">
-                      <HeartIcon className="w-4 h-4 fill-current" />
-                      <span>{article.likes_count || 0}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-gray-400 text-sm">
-                      <CalendarIcon className="w-4 h-4" />
-                      {article.published_at
-                        ? new Date(article.published_at).toLocaleDateString('pt-BR')
-                        : 'Não publicado'}
+                    <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
+                      <CalendarIcon className="w-4 h-4 text-gray-400" />
+                      {article.published_at ? new Date(article.published_at).toLocaleDateString('pt-BR') : '—'}
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => handleEdit(article)}
-                        className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                         title="Editar"
                       >
-                        <EditIcon className="w-4 h-4" />
+                        <EditIcon className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleDelete(article.id)}
-                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                         title="Excluir"
                       >
-                        <TrashIcon className="w-4 h-4" />
+                        <TrashIcon className="w-5 h-5" />
                       </button>
                     </div>
                   </td>

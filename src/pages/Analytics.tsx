@@ -85,11 +85,11 @@ export default function Analytics() {
   const { data, loading, error, warning, lastUpdated } = useAdminAnalytics();
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 overflow-x-hidden">
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+    <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Análises</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Análises</h1>
+          <p className="mt-2 text-base text-gray-500">
             Visualize análises e relatórios abrangentes da sua loja
           </p>
         </div>
@@ -112,62 +112,68 @@ export default function Analytics() {
       )}
 
       {/* Revenue & Sales Segmentation Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Global USD Card */}
-        <div className="bg-gradient-to-br from-blue-50 to-white shadow rounded-xl p-6 border border-blue-100">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-blue-900">Vendas & Receita Global (USD)</h2>
-            <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">USD $</span>
+        <div className="bg-gradient-to-br from-blue-50/30 to-white shadow-sm border border-blue-100 rounded-2xl p-6 transition-all hover:shadow-md">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-blue-900 flex items-center gap-2">
+              <div className="w-2 h-6 bg-blue-500 rounded-full" />
+              Vendas & Receita Global (USD)
+            </h2>
+            <span className="px-3 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800 uppercase tracking-wider">USD $</span>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Receita Total</p>
-              <p className="text-2xl font-bold text-gray-900">{loading ? '...' : formatCurrency(data.totalRevenue)}</p>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="bg-white/50 p-4 rounded-xl border border-blue-50">
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-tight">Receita Total</p>
+              <p className="text-2xl font-black text-gray-900 mt-1">{loading ? '...' : formatCurrency(data.totalRevenue)}</p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Vendas Totais</p>
-              <p className="text-2xl font-bold text-gray-900">{loading ? '...' : data.totalSales}</p>
+            <div className="bg-white/50 p-4 rounded-xl border border-blue-50">
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-tight">Vendas Totais</p>
+              <p className="text-2xl font-black text-gray-900 mt-1">{loading ? '...' : data.totalSales}</p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Receita Hoje</p>
-              <p className="text-xl font-semibold text-gray-800">{loading ? '...' : formatCurrency(data.revenueToday)}</p>
+            <div className="bg-white/50 p-4 rounded-xl border border-blue-50">
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-tight">Receita Hoje</p>
+              <p className="text-xl font-bold text-blue-600 mt-1">{loading ? '...' : formatCurrency(data.revenueToday)}</p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Vendas Hoje</p>
-              <p className="text-xl font-semibold text-gray-800">{loading ? '...' : data.salesToday}</p>
+            <div className="bg-white/50 p-4 rounded-xl border border-blue-50">
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-tight">Vendas Hoje</p>
+              <p className="text-xl font-bold text-blue-600 mt-1">{loading ? '...' : data.salesToday}</p>
             </div>
           </div>
         </div>
 
         {/* Angola AOA Card */}
-        <div className="bg-gradient-to-br from-orange-50 to-white shadow rounded-xl p-6 border border-orange-100">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-orange-900">Vendas & Receita Angola (AOA)</h2>
-            <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">AOA Kz</span>
+        <div className="bg-gradient-to-br from-orange-50/30 to-white shadow-sm border border-orange-100 rounded-2xl p-6 transition-all hover:shadow-md">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-orange-900 flex items-center gap-2">
+              <div className="w-2 h-6 bg-orange-500 rounded-full" />
+              Vendas & Receita Angola (AOA)
+            </h2>
+            <span className="px-3 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-800 uppercase tracking-wider">AOA Kz</span>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Receita Total</p>
-              <p className="text-2xl font-bold text-gray-900">{loading ? '...' : formatKwanza(data.aoaRevenue)}</p>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="bg-white/50 p-4 rounded-xl border border-orange-50">
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-tight">Receita Total</p>
+              <p className="text-2xl font-black text-gray-900 mt-1">{loading ? '...' : formatKwanza(data.aoaRevenue)}</p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Vendas Totais</p>
-              <p className="text-2xl font-bold text-gray-900">{loading ? '...' : data.aoaSales}</p>
+            <div className="bg-white/50 p-4 rounded-xl border border-orange-50">
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-tight">Vendas Totais</p>
+              <p className="text-2xl font-black text-gray-900 mt-1">{loading ? '...' : data.aoaSales}</p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Receita Hoje</p>
-              <p className="text-xl font-semibold text-gray-800">{loading ? '...' : formatKwanza(data.aoaRevenueToday)}</p>
+            <div className="bg-white/50 p-4 rounded-xl border border-orange-50">
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-tight">Receita Hoje</p>
+              <p className="text-xl font-bold text-orange-600 mt-1">{loading ? '...' : formatKwanza(data.aoaRevenueToday)}</p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Vendas Hoje</p>
-              <p className="text-xl font-semibold text-gray-800">{loading ? '...' : data.aoaSalesToday}</p>
+            <div className="bg-white/50 p-4 rounded-xl border border-orange-50">
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-tight">Vendas Hoje</p>
+              <p className="text-xl font-bold text-orange-600 mt-1">{loading ? '...' : data.aoaSalesToday}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Primary stats — existing cards wired */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-6">
         <StatCard
           label="Taxa de Conversão"
           value={`${data.conversionRate.toFixed(1)}%`}
@@ -221,14 +227,20 @@ export default function Analytics() {
       )}
 
       {/* Charts — existing layout, real data */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-8">
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Receita ao Longo do Tempo</h2>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-10">
+        <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-6 lg:p-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <div className="w-2 h-6 bg-indigo-500 rounded-full" />
+            Receita ao Longo do Tempo
+          </h2>
           <RevenueChart loading={loading} revenueByDay={data.revenueByDay} />
         </div>
 
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Produtos Mais Vendidos</h2>
+        <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-6 lg:p-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <div className="w-2 h-6 bg-primary-600 rounded-full" />
+            Produtos Mais Vendidos
+          </h2>
           {loading ? (
             <p className="text-gray-500 text-sm">Carregando...</p>
           ) : data.topProducts.length === 0 ? (
@@ -259,14 +271,23 @@ export default function Analytics() {
       </div>
 
       {/* Recent orders */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Últimos Pedidos</h2>
+      <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-6 lg:p-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+          <div className="w-2 h-6 bg-amber-500 rounded-full" />
+          Últimos Pedidos
+        </h2>
         {loading ? (
-          <p className="text-gray-500 text-sm">Carregando...</p>
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          </div>
         ) : data.recentOrders.length === 0 ? (
-          <p className="text-gray-500 text-sm">Nenhum pedido encontrado</p>
+          <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+            <p className="text-gray-500 font-medium">Nenhum pedido encontrado</p>
+          </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto -mx-6 lg:-mx-8">
+            <div className="inline-block min-w-full align-middle px-6 lg:px-8">
+              <div className="overflow-hidden border border-gray-100 rounded-xl">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead>
                 <tr>
@@ -317,6 +338,8 @@ export default function Analytics() {
                 ))}
               </tbody>
             </table>
+              </div>
+            </div>
           </div>
         )}
       </div>

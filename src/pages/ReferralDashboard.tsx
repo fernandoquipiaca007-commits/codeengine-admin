@@ -42,7 +42,9 @@ export default function ReferralDashboard() {
       const res = await fetch(`${API}/api/admin/referral/overview`, { headers });
       const data = await res.json();
       if (data.success) setOverview(data.overview);
-    } catch {}
+    } catch (err) {
+      console.error('Fetch overview error:', err);
+    }
   }, []);
 
   const fetchUsers = useCallback(async () => {
@@ -50,7 +52,9 @@ export default function ReferralDashboard() {
       const res = await fetch(`${API}/api/admin/referral/users?limit=50`, { headers });
       const data = await res.json();
       if (data.success) setUsers(data.users || []);
-    } catch {}
+    } catch (err) {
+      console.error('Fetch users error:', err);
+    }
   }, []);
 
   const fetchConversions = useCallback(async () => {
@@ -58,7 +62,9 @@ export default function ReferralDashboard() {
       const res = await fetch(`${API}/api/admin/referral/conversions?limit=100`, { headers });
       const data = await res.json();
       if (data.success) setConversions(data.conversions || []);
-    } catch {}
+    } catch (err) {
+      console.error('Fetch conversions error:', err);
+    }
   }, []);
 
   const fetchFraud = useCallback(async () => {
@@ -66,7 +72,9 @@ export default function ReferralDashboard() {
       const res = await fetch(`${API}/api/admin/referral/fraud-log`, { headers });
       const data = await res.json();
       if (data.success) setFraudLog(data.logs || []);
-    } catch {}
+    } catch (err) {
+      console.error('Fetch fraud error:', err);
+    }
   }, []);
 
   useEffect(() => {
@@ -118,28 +126,28 @@ export default function ReferralDashboard() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto overflow-x-hidden">
       {/* Header */}
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
-          🚀 Referral & Rewards
+      <div className="mb-10">
+        <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+          Referral & Rewards
         </h1>
-        <p className="text-sm text-gray-500 mt-1">Manage referrals, points, levels, and progressive discounts</p>
+        <p className="mt-2 text-base text-gray-500">Gerencie sistema de indicação, níveis e recompensas progressivas</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200 pb-3">
+      <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-100 pb-4">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id as any)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+            className={`px-5 py-2.5 text-sm font-bold rounded-xl transition-all active:scale-95 ${
               tab === t.id
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-primary-600 text-white shadow-lg shadow-primary-100'
+                : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
             }`}
           >
-            {t.icon} {t.label}
+            {t.icon} <span className="ml-1.5">{t.label}</span>
           </button>
         ))}
       </div>
@@ -152,31 +160,36 @@ export default function ReferralDashboard() {
 
       {/* OVERVIEW TAB */}
       {!loading && tab === 'overview' && overview && (
-        <div className="space-y-6">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Referral Links', value: overview.totalLinks, color: 'blue' },
-              { label: 'Conversions', value: overview.totalConversions, color: 'green' },
-              { label: 'Revenue Generated', value: `$${overview.totalRevenue.toFixed(2)}`, color: 'purple' },
-              { label: 'Points Distributed', value: overview.totalPointsDistributed.toLocaleString(), color: 'amber' },
+              { label: 'Referral Links', value: overview.totalLinks, color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: 'Conversões', value: overview.totalConversions, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: 'Receita Gerada', value: `$${overview.totalRevenue.toFixed(2)}`, color: 'text-purple-600', bg: 'bg-purple-50' },
+              { label: 'Pontos Distribuídos', value: overview.totalPointsDistributed.toLocaleString(), color: 'text-amber-600', bg: 'bg-amber-50' },
             ].map((stat) => (
-              <div key={stat.label} className={`bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm`}>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{stat.label}</p>
-                <p className={`text-2xl sm:text-3xl font-bold mt-1 text-${stat.color}-600`}>{stat.value}</p>
+              <div key={stat.label} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all hover:shadow-md">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
+                <p className={`text-2xl sm:text-3xl font-black ${stat.color}`}>{stat.value}</p>
               </div>
             ))}
           </div>
 
           {/* Level Distribution */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Level Distribution</h3>
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-6 flex items-center gap-2">
+              <div className="w-1.5 h-4 bg-primary-600 rounded-full" />
+              Distribuição de Nível
+            </h3>
             <div className="flex flex-wrap gap-3">
               {Object.entries(overview.levelDistribution).map(([level, count]) => (
-                <div key={level} className={`px-4 py-2 rounded-lg ${LEVEL_COLORS[level] || 'bg-gray-100'}`}>
-                  <span className="mr-1">{LEVEL_ICONS[level]}</span>
-                  <span className="font-semibold capitalize">{level}</span>
-                  <span className="ml-2 font-bold">{count}</span>
+                <div key={level} className={`px-4 py-3 rounded-xl border flex items-center gap-3 transition-all hover:scale-105 ${LEVEL_COLORS[level] || 'bg-gray-50 border-gray-100'}`}>
+                  <span className="text-xl">{LEVEL_ICONS[level]}</span>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase opacity-60 leading-none mb-1">{level}</div>
+                    <div className="text-lg font-black">{count}</div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -184,44 +197,60 @@ export default function ReferralDashboard() {
 
           {/* Fraud Attempts */}
           {overview.fraudAttempts > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <p className="text-sm font-medium text-red-700">
-                🛡️ {overview.fraudAttempts} fraud attempt(s) blocked
-              </p>
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-5 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                🛡️
+              </div>
+              <div>
+                <p className="text-red-900 font-bold">Tentativas de fraude detectadas</p>
+                <p className="text-red-600 text-sm font-medium">{overview.fraudAttempts} ações suspeitas foram bloqueadas automaticamente.</p>
+              </div>
             </div>
           )}
 
           {/* Grant Points */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">💰 Grant Points Manually</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <input
-                type="text"
-                placeholder="Member ID (UUID)"
-                value={grantMemberId}
-                onChange={(e) => setGrantMemberId(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <input
-                type="number"
-                placeholder="Points amount"
-                value={grantAmount || ''}
-                onChange={(e) => setGrantAmount(Number(e.target.value))}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <input
-                type="text"
-                placeholder="Description (optional)"
-                value={grantDesc}
-                onChange={(e) => setGrantDesc(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-6 flex items-center gap-2">
+              <div className="w-1.5 h-4 bg-amber-500 rounded-full" />
+              💰 Conceder Pontos Manualmente
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5 ml-1">ID do Membro (UUID)</label>
+                <input
+                  type="text"
+                  placeholder="00000000-0000-..."
+                  value={grantMemberId}
+                  onChange={(e) => setGrantMemberId(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500/20"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5 ml-1">Quantidade</label>
+                <input
+                  type="number"
+                  placeholder="Ex: 500"
+                  value={grantAmount || ''}
+                  onChange={(e) => setGrantAmount(Number(e.target.value))}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500/20"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5 ml-1">Descrição</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Bónus de campanha"
+                  value={grantDesc}
+                  onChange={(e) => setGrantDesc(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500/20"
+                />
+              </div>
             </div>
-            <div className="mt-3 flex items-center gap-3">
-              <button onClick={handleGrantPoints} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                Grant Points
+            <div className="mt-6 flex flex-col sm:flex-row items-center gap-4">
+              <button onClick={handleGrantPoints} className="w-full sm:w-auto px-8 py-3 bg-primary-600 text-white text-sm font-bold rounded-xl hover:bg-primary-700 transition-all active:scale-95 shadow-lg shadow-primary-100">
+                Conceder Pontos
               </button>
-              {grantMsg && <span className="text-sm">{grantMsg}</span>}
+              {grantMsg && <span className={`text-sm font-bold ${grantMsg.includes('✅') ? 'text-emerald-600' : 'text-red-600'}`}>{grantMsg}</span>}
             </div>
           </div>
         </div>
@@ -229,7 +258,7 @@ export default function ReferralDashboard() {
 
       {/* USERS TAB */}
       {!loading && tab === 'users' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-in fade-in">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -268,7 +297,7 @@ export default function ReferralDashboard() {
 
       {/* CONVERSIONS TAB */}
       {!loading && tab === 'conversions' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-in fade-in">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -311,45 +340,48 @@ export default function ReferralDashboard() {
 
       {/* CONFIG TAB */}
       {!loading && tab === 'config' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm max-w-xl">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">⚙️ Product Referral Configuration</h3>
-          <div className="space-y-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm max-w-2xl animate-in fade-in">
+          <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-8 flex items-center gap-2">
+            <div className="w-2 h-6 bg-primary-600 rounded-full" />
+            Configuração de Indicação
+          </h3>
+          <div className="space-y-6">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Product ID</label>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Produto Principal (UUID)</label>
               <input
                 type="text"
-                placeholder="Product UUID"
+                placeholder="Insira o ID do produto digital"
                 value={configProductId}
                 onChange={(e) => setConfigProductId(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary-500/20"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Conversion Goal</label>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Meta de Conversão</label>
                 <input
                   type="number"
                   value={configGoal}
                   onChange={(e) => setConfigGoal(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary-500/20"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Min Price ($)</label>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Preço Mínimo ($)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={configMinPrice}
                   onChange={(e) => setConfigMinPrice(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary-500/20"
                 />
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button onClick={handleSaveConfig} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                Save Configuration
+            <div className="pt-4 flex flex-col sm:flex-row items-center gap-4">
+              <button onClick={handleSaveConfig} className="w-full sm:w-auto px-10 py-4 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-100">
+                Salvar Configuração
               </button>
-              {configMsg && <span className="text-sm">{configMsg}</span>}
+              {configMsg && <span className={`text-sm font-bold ${configMsg.includes('✅') ? 'text-emerald-600' : 'text-red-600'}`}>{configMsg}</span>}
             </div>
           </div>
         </div>
@@ -357,7 +389,7 @@ export default function ReferralDashboard() {
 
       {/* FRAUD TAB */}
       {!loading && tab === 'fraud' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-in fade-in">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">

@@ -154,13 +154,13 @@ export default function Sidebar() {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'owner':
-        return 'bg-purple-100 text-purple-700';
+        return 'bg-purple-100 text-purple-700 ring-1 ring-purple-200';
       case 'admin':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-100 text-blue-700 ring-1 ring-blue-200';
       case 'editor':
-        return 'bg-green-100 text-green-700';
+        return 'bg-green-100 text-green-700 ring-1 ring-green-200';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-100 text-gray-700 ring-1 ring-gray-200';
     }
   };
 
@@ -195,24 +195,28 @@ export default function Sidebar() {
   const SidebarContent = (
     <>
       {/* Logo */}
-      <div className="flex items-center justify-between px-4 py-3 lg:py-4 border-b border-gray-200">
-        <Link to="/" className="text-lg lg:text-xl font-bold text-primary-600 truncate">
-          <span className="lg:hidden">CE</span>
-          <span className="hidden lg:inline">CodeEngine 1</span>
+      <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+        <Link to="/" className="flex items-center gap-2 group">
+          <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center text-white shadow-lg shadow-primary-200 group-hover:scale-110 transition-transform">
+            <span className="font-bold text-lg">C</span>
+          </div>
+          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600">
+            CodeEngine
+          </span>
         </Link>
         <button
           onClick={() => setIsOpen(false)}
-          className="lg:hidden p-1.5 text-gray-500 hover:text-gray-700"
+          className="lg:hidden p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
           aria-label="Fechar menu"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 sm:px-4 py-4 sm:py-6 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto scrollbar-hide">
         {visibleLinks.map((link) => {
           const isActive = location.pathname === link.path;
           return (
@@ -220,41 +224,40 @@ export default function Sidebar() {
               key={link.path}
               to={link.path}
               onClick={closeSidebar}
-              className={`flex items-center px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium rounded-lg transition-all touch-target ${
+              className={`flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group ${
                 isActive
-                  ? 'bg-primary-50 text-primary-700 shadow-sm'
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-primary-50 text-primary-700 shadow-sm shadow-primary-100/50 ring-1 ring-primary-100/50'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
-              <span className={`flex-shrink-0 ${isActive ? 'text-primary-600' : 'text-gray-400'}`}>
+              <span className={`flex-shrink-0 transition-colors ${isActive ? 'text-primary-600' : 'text-gray-400 group-hover:text-gray-600'}`}>
                 {link.icon}
               </span>
-              <span className="ml-3 hidden sm:inline truncate">{link.name}</span>
-              <span className="ml-2 inline sm:hidden">{link.name}</span>
+              <span className="ml-3 truncate font-semibold">{link.name}</span>
             </Link>
           );
         })}
       </nav>
 
       {/* User Info & Logout */}
-      <div className="p-3 sm:p-4 border-t border-gray-200 space-y-3 sm:space-y-4">
+      <div className="p-4 border-t border-gray-100 bg-gray-50/50">
         {adminUser && (
-          <div>
-            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+          <div className="mb-4 p-3 rounded-2xl bg-white border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
               <div className="flex-shrink-0">
-                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-xs sm:text-sm">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold shadow-md shadow-primary-100">
                   {adminUser.full_name.charAt(0).toUpperCase()}
                 </div>
               </div>
-              <div className="flex-1 min-w-0 hidden sm:block">
-                <p className="text-xs sm:text-sm font-medium text-gray-700 truncate">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-gray-900 truncate">
                   {adminUser.full_name}
                 </p>
                 <p className="text-xs text-gray-500 truncate">{adminUser.email}</p>
               </div>
             </div>
             <span
-              className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getRoleBadgeColor(
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${getRoleBadgeColor(
                 adminUser.role
               )}`}
             >
@@ -264,13 +267,13 @@ export default function Sidebar() {
         )}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-all touch-target"
+          className="w-full flex items-center justify-center px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-95 group"
         >
           <svg
-            className="w-4 sm:w-5 h-4 sm:h-5 mr-2"
+            className="w-5 h-5 mr-2 transition-transform group-hover:-translate-x-1"
             fill="none"
             viewBox="0 0 24 24"
-            strokeWidth="1.5"
+            strokeWidth="2"
             stroke="currentColor"
           >
             <path
@@ -279,8 +282,7 @@ export default function Sidebar() {
               d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
             />
           </svg>
-          <span className="hidden sm:inline">Sair</span>
-          <span className="sm:hidden">Sair</span>
+          Sair da Conta
         </button>
       </div>
     </>
@@ -291,10 +293,10 @@ export default function Sidebar() {
       {/* Mobile Hamburger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed bottom-4 right-4 z-40 p-3 bg-primary-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all touch-target"
+        className="lg:hidden fixed bottom-6 right-6 z-50 p-4 bg-primary-600 text-white rounded-2xl shadow-2xl shadow-primary-200 hover:scale-110 active:scale-90 transition-all"
         aria-label="Abrir menu"
       >
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
         </svg>
       </button>
@@ -302,14 +304,14 @@ export default function Sidebar() {
       {/* Mobile Overlay */}
       {isOpen && isMobile && (
         <div
-          className="sidebar-overlay"
+          className="fixed inset-0 z-40 bg-gray-900/40 backdrop-blur-sm transition-opacity duration-300"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:relative inset-y-0 left-0 z-40 w-[86vw] max-w-[320px] sm:w-72 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 transform ${
+        className={`fixed lg:sticky top-0 left-0 z-40 h-screen w-[280px] sm:w-[320px] lg:w-72 bg-white border-r border-gray-100 flex flex-col transition-all duration-300 ease-in-out transform ${
           isOpen || !isMobile ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

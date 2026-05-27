@@ -40,12 +40,17 @@ export default function PushNotifications() {
   }
 
   return (
-    <div className="p-6 max-w-3xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Push Notifications</h1>
+    <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+      <div className="mb-10">
+        <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+          Push Notifications
+        </h1>
+        <p className="mt-2 text-base text-gray-500">Envie notificações para todos os dispositivos registrados</p>
+      </div>
 
-      <div className="space-y-6 bg-white rounded-lg shadow p-6">
+      <div className="max-w-3xl space-y-8 bg-white border border-gray-100 rounded-2xl p-6 lg:p-8 shadow-sm">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tipo de Notificação</label>
           <select
             value={type}
             onChange={(e) => setType(e.target.value as PushType)}
@@ -58,47 +63,62 @@ export default function PushNotifications() {
           </select>
         </div>
 
-        {(['pt', 'en', 'fr'] as AppLocale[]).map((lang) => (
-          <fieldset key={lang} className="border border-gray-200 rounded-lg p-4">
-            <legend className="text-sm font-semibold text-gray-700 px-2 uppercase">{lang}</legend>
-            <input
-              type="text"
-              placeholder="Título"
-              value={payloads[lang].title}
-              onChange={(e) => setPayloads({ ...payloads, [lang]: { ...payloads[lang], title: e.target.value } })}
-              className="w-full mt-2 border border-gray-300 rounded-md px-3 py-2 mb-2"
-            />
-            <textarea
-              placeholder="Mensagem"
-              value={payloads[lang].body}
-              onChange={(e) => setPayloads({ ...payloads, [lang]: { ...payloads[lang], body: e.target.value } })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-              rows={2}
-            />
-          </fieldset>
-        ))}
+        <div className="grid grid-cols-1 gap-6">
+          {(['pt', 'en', 'fr'] as AppLocale[]).map((lang) => (
+            <fieldset key={lang} className="border border-gray-100 rounded-2xl p-6 bg-gray-50/50">
+              <legend className="text-xs font-black text-primary-600 bg-white px-3 py-1 rounded-full border border-gray-100 uppercase tracking-widest">{lang}</legend>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Título</label>
+                  <input
+                    type="text"
+                    placeholder="Título da notificação"
+                    value={payloads[lang].title}
+                    onChange={(e) => setPayloads({ ...payloads, [lang]: { ...payloads[lang], title: e.target.value } })}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Corpo da Mensagem</label>
+                  <textarea
+                    placeholder="Conteúdo da notificação..."
+                    value={payloads[lang].body}
+                    onChange={(e) => setPayloads({ ...payloads, [lang]: { ...payloads[lang], body: e.target.value } })}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </fieldset>
+          ))}
+        </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">URL (opcional)</label>
+          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">URL de Destino (opcional)</label>
           <input
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://..."
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
+            placeholder="https://codeengine.com/..."
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
           />
         </div>
 
-        <button
-          onClick={handleSend}
-          disabled={sending}
-          className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50"
-        >
-          {sending ? 'Enviando...' : 'Enviar notificação'}
-        </button>
+        <div className="pt-4">
+          <button
+            onClick={handleSend}
+            disabled={sending}
+            className="w-full bg-primary-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-primary-100 hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+          >
+            {sending && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+            {sending ? 'Enviando Notificações...' : 'Disparar Notificação'}
+          </button>
+        </div>
 
         {result && (
-          <p className={`text-sm ${result.includes('Erro') ? 'text-red-600' : 'text-green-600'}`}>{result}</p>
+          <div className={`mt-4 p-4 rounded-xl border font-bold text-center text-sm ${result.includes('Erro') ? 'bg-red-50 border-red-100 text-red-600' : 'bg-green-50 border-green-100 text-green-600'}`}>
+            {result}
+          </div>
         )}
       </div>
     </div>

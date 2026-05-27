@@ -153,15 +153,15 @@ export default function Products() {
   // Render based on view mode
   if (viewMode === 'create') {
     return (
-      <div className="p-4 sm:p-6 md:p-8 overflow-x-hidden">
+      <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
         <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Criar Produto</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Criar Produto</h1>
+          <p className="mt-2 text-base text-gray-500">
             Adicione um novo produto digital à sua loja
           </p>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-6 lg:p-8">
           <ProductForm onSubmit={handleCreateProduct} onCancel={handleCancel} />
         </div>
       </div>
@@ -170,15 +170,15 @@ export default function Products() {
 
   if (viewMode === 'edit' && selectedProduct) {
     return (
-      <div className="p-4 sm:p-6 md:p-8 overflow-x-hidden">
+      <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
         <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Editar Produto</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Editar Produto</h1>
+          <p className="mt-2 text-base text-gray-500">
             Atualize informações e arquivos do produto
           </p>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-6 lg:p-8">
           <ProductForm
             product={selectedProduct}
             onSubmit={handleUpdateProduct}
@@ -191,20 +191,23 @@ export default function Products() {
 
   // List view
   return (
-    <div className="p-4 sm:p-6 md:p-8 overflow-x-hidden">
+    <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
       <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Produtos</h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Produtos</h1>
+        <p className="mt-2 text-base text-gray-500">
           Gerencie seus produtos digitais, uploads e inventário
         </p>
       </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-medium text-gray-900">Lista de Produtos</h2>
+      <div className="bg-white shadow-sm border border-gray-100 rounded-2xl p-6 lg:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <div className="w-2 h-6 bg-primary-600 rounded-full" />
+            Lista de Produtos
+          </h2>
           <button
             onClick={() => setViewMode('create')}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-bold rounded-xl text-white bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-200 transition-all active:scale-95"
           >
             <svg
               className="mr-2 h-5 w-5"

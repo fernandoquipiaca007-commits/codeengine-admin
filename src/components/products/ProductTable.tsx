@@ -111,19 +111,16 @@ export default function ProductTable({
   return (
     <div>
       {/* Filters and Search */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {/* Search */}
         <div className="sm:col-span-1">
-          <label htmlFor="search" className="sr-only">
-            Buscar
-          </label>
           <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
               <svg
                 className="h-5 w-5 text-gray-400"
                 fill="none"
                 viewBox="0 0 24 24"
-                strokeWidth="1.5"
+                strokeWidth="2"
                 stroke="currentColor"
               >
                 <path
@@ -138,7 +135,7 @@ export default function ProductTable({
               id="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full rounded-md border-gray-300 pl-10 focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+              className="block w-full rounded-xl border-gray-200 bg-gray-50/50 pl-12 py-2.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 text-sm font-medium transition-all"
               placeholder="Buscar produtos..."
             />
           </div>
@@ -146,14 +143,11 @@ export default function ProductTable({
 
         {/* Status Filter */}
         <div>
-          <label htmlFor="status-filter" className="sr-only">
-            Status
-          </label>
           <select
             id="status-filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="block w-full rounded-md border-gray-300 focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+            className="block w-full rounded-xl border-gray-200 bg-gray-50/50 py-2.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 text-sm font-bold transition-all"
           >
             <option value="all">Todos os Status</option>
             <option value="active">Ativo</option>
@@ -164,14 +158,11 @@ export default function ProductTable({
 
         {/* Category Filter */}
         <div>
-          <label htmlFor="category-filter" className="sr-only">
-            Category
-          </label>
           <select
             id="category-filter"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="block w-full rounded-md border-gray-300 focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+            className="block w-full rounded-xl border-gray-200 bg-gray-50/50 py-2.5 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 text-sm font-bold transition-all"
           >
             <option value="all">Todas as Categorias</option>
             {categories.map((category) => (
@@ -184,16 +175,16 @@ export default function ProductTable({
       </div>
 
       {/* Results Count */}
-      <div className="mb-4">
-        <p className="text-sm text-gray-700">
-          Mostrando <span className="font-medium">{filteredProducts.length}</span> de{' '}
-          <span className="font-medium">{products.length}</span> produtos
+      <div className="mb-6 flex items-center gap-2">
+        <div className="h-1 w-1 rounded-full bg-gray-300" />
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+          Encontrados: <span className="text-gray-900">{filteredProducts.length}</span> / {products.length}
         </p>
       </div>
 
       {/* Table */}
       {filteredProducts.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+        <div className="text-center py-20 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
           <svg
             className="mx-auto h-12 w-12 text-gray-400"
             fill="none"
@@ -216,58 +207,58 @@ export default function ProductTable({
         </div>
       ) : (
         <>
-          <div className="space-y-3 md:hidden">
+          <div className="space-y-4 md:hidden">
             {filteredProducts.map((product) => (
-              <article key={product.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="flex items-start gap-3">
+              <article key={product.id} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <div className="flex items-start gap-4 mb-4">
                   <img
-                    className="h-14 w-14 rounded object-cover flex-shrink-0"
+                    className="h-16 w-16 rounded-xl object-cover flex-shrink-0 shadow-inner"
                     src={product.cover_url}
                     alt={product.title}
                   />
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-semibold text-gray-900 truncate">{product.title}</h4>
-                    <p className="mt-1 text-xs text-gray-500">{product.description.substring(0, 90)}...</p>
+                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                      <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tight ${getStatusColor(product.status)}`}>
+                        {product.status}
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-gray-900 truncate">{product.title}</h4>
+                    <p className="text-xs text-gray-400 line-clamp-1">{product.description}</p>
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <div className="rounded-lg bg-gray-50 p-2">
-                    <p className="text-gray-500">Categoria</p>
-                    <p className="font-medium text-gray-800 truncate">{getCategoryName(product.category_id)}</p>
+
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                  <div className="rounded-xl bg-gray-50/80 p-3">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1">Categoria</p>
+                    <p className="text-xs font-black text-gray-700 truncate">{getCategoryName(product.category_id)}</p>
                   </div>
-                  <div className="rounded-lg bg-gray-50 p-2">
-                    <p className="text-gray-500">Preço</p>
-                    <p className="font-semibold text-gray-900">{formatPrice(product.price)}</p>
+                  <div className="rounded-xl bg-gray-50/80 p-3">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1">Preço</p>
+                    <p className="text-sm font-black text-primary-600">{formatPrice(product.price)}</p>
                   </div>
                 </div>
-                <div className="mt-2">
-                  <span
-                    className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold leading-5 ${getStatusColor(
-                      product.status
-                    )}`}
-                  >
-                    {product.status}
-                  </span>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <StripeSync product={product} onSyncComplete={onSyncComplete} />
+
+                <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-50">
+                  <div className="w-full mb-2">
+                    <StripeSync product={product} onSyncComplete={onSyncComplete} />
+                  </div>
                   {onCustomize && (
                     <button
                       onClick={() => onCustomize(product)}
-                      className="touch-target rounded-lg border border-blue-200 px-3 py-2 text-xs font-medium text-blue-700"
+                      className="flex-1 min-w-[120px] px-3 py-2 text-xs font-bold bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
                     >
                       Personalizar
                     </button>
                   )}
                   <button
                     onClick={() => onEdit(product)}
-                    className="touch-target rounded-lg border border-primary-200 px-3 py-2 text-xs font-medium text-primary-700"
+                    className="flex-1 px-3 py-2 text-xs font-bold bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-colors"
                   >
                     Editar
                   </button>
                   <button
                     onClick={() => onDelete(product)}
-                    className="touch-target rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-700"
+                    className="px-3 py-2 text-xs font-bold bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
                   >
                     Deletar
                   </button>
@@ -276,81 +267,58 @@ export default function ProductTable({
             ))}
           </div>
 
-          <div className="hidden md:block overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
-            <table className="min-w-full divide-y divide-gray-300">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
-                >
-                  Product
-                </th>
-                <th
-                  scope="col"
-                  className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                >
-                  Categoria
-                </th>
-                <th
-                  scope="col"
-                  className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                >
-                  Preço
-                </th>
-                <th
-                  scope="col"
-                  className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                >
-                  Status
-                </th>
-                <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                  <span className="sr-only">Ações</span>
-                </th>
+          <div className="hidden md:block bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-100">
+            <thead>
+              <tr className="bg-gray-50/50">
+                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Produto</th>
+                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Categoria</th>
+                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Preço</th>
+                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+            <tbody className="divide-y divide-gray-100">
               {filteredProducts.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="whitespace-nowrap py-4 pl-4 pr-3 sm:pl-6">
+                <tr key={product.id} className="hover:bg-gray-50/50 transition-colors group">
+                  <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0">
+                      <div className="h-12 w-12 flex-shrink-0">
                         <img
-                          className="h-10 w-10 rounded object-cover"
+                          className="h-12 w-12 rounded-xl object-cover shadow-sm ring-1 ring-gray-100"
                           src={product.cover_url}
                           alt={product.title}
                         />
                       </div>
-                      <div className="ml-4">
-                        <div className="font-medium text-gray-900">{product.title}</div>
-                        <div className="text-gray-500 text-sm truncate max-w-xs">
-                          {product.description.substring(0, 60)}...
+                      <div className="ml-4 min-w-0">
+                        <div className="font-bold text-gray-900 group-hover:text-primary-600 transition-colors truncate max-w-xs">{product.title}</div>
+                        <div className="text-gray-400 text-xs truncate max-w-xs font-medium">
+                          {product.description}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {getCategoryName(product.category_id)}
+                  <td className="px-6 py-4">
+                    <span className="px-2 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold">
+                      {getCategoryName(product.category_id)}
+                    </span>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 font-medium">
+                  <td className="px-6 py-4 text-sm font-black text-gray-900">
                     {formatPrice(product.price)}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm">
-                    <span
-                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(
-                        product.status
-                      )}`}
-                    >
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight ${getStatusColor(product.status)}`}>
                       {product.status}
                     </span>
                   </td>
-                  <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                    <div className="flex items-center justify-end gap-3">
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
                       {onChangeStatus && (
                         <select
                           value={product.status}
                           onChange={(e) => onChangeStatus(product.id, e.target.value as any)}
-                          className="block w-28 rounded-md border-gray-300 text-xs focus:border-primary-500 focus:ring-primary-500 py-1 pl-2 pr-6"
+                          className="rounded-lg border-gray-200 bg-gray-50 text-[10px] font-black uppercase tracking-tight focus:ring-2 focus:ring-primary-500/20 py-1 pl-2 pr-7 transition-all"
                         >
                           <option value="draft">Rascunho</option>
                           <option value="active">Publicar</option>
@@ -361,23 +329,31 @@ export default function ProductTable({
                       {onCustomize && (
                         <button
                           onClick={() => onCustomize(product)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                           title="Personalizar Página"
                         >
-                          Customize
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                          </svg>
                         </button>
                       )}
                       <button
                         onClick={() => onEdit(product)}
-                        className="text-primary-600 hover:text-primary-900"
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        title="Editar"
                       >
-                        Editar
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
                       </button>
                       <button
                         onClick={() => onDelete(product)}
-                        className="text-red-600 hover:text-red-900"
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        title="Deletar"
                       >
-                        Deletar
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h14" />
+                        </svg>
                       </button>
                     </div>
                   </td>
@@ -385,6 +361,7 @@ export default function ProductTable({
               ))}
             </tbody>
             </table>
+            </div>
           </div>
         </>
       )}

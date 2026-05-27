@@ -210,26 +210,25 @@ export default function FeaturedProducts() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl overflow-x-hidden">
+      <div className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Produtos em Destaque</h1>
-          <p className="text-gray-600 text-sm mt-1">
-            Até 3 produtos na Home. Ao escolher um produto, título, descrição e capa são preenchidos
-            automaticamente.
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Produtos em Destaque</h1>
+          <p className="mt-2 text-base text-gray-500 max-w-xl">
+            Configure até 3 produtos para aparecerem no carrossel da Home.
           </p>
         </div>
         <button
           type="button"
           onClick={openCreate}
           disabled={items.length >= 3 || products.length === 0}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+          className="w-full sm:w-auto px-6 py-3 bg-primary-600 text-white font-bold rounded-xl shadow-lg shadow-primary-100 hover:bg-primary-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          Adicionar destaque
+          Adicionar Destaque
         </button>
       </div>
 
-      <div className="space-y-4 mb-10">
+      <div className="space-y-4 mb-12">
         {items.map((row) => (
           <div
             key={row.id}
