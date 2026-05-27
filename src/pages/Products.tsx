@@ -200,11 +200,11 @@ export default function Products() {
       </div>
 
       <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6">
           <h2 className="text-lg font-medium text-gray-900">Lista de Produtos</h2>
           <button
             onClick={() => setViewMode('create')}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 w-full sm:w-auto"
           >
             <svg
               className="mr-2 h-5 w-5"
