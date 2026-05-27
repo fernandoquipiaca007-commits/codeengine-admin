@@ -242,86 +242,145 @@ export function Members() {
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 overflow-x-hidden">
+    <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-10">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 flex items-center gap-3">
-            <Users className="w-7 h-7 text-blue-400" />
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-xl">
+              <Users className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+            </div>
             Membros
           </h1>
-          <p className="text-gray-400">
+          <p className="mt-2 text-base text-gray-500">
             {members.length} membros registrados • Gerencie níveis e acessos
           </p>
         </div>
 
         {/* Search */}
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <div className="relative w-full lg:w-96">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nome, email ou nível..."
-            className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+            className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-gray-900 text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
           />
         </div>
       </div>
 
       {errorMessage && (
-        <div className="mb-6 rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        <div className="mb-8 rounded-2xl border border-red-100 bg-red-50/50 px-6 py-4 text-sm text-red-800 font-medium backdrop-blur-sm">
           {errorMessage}
         </div>
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         {['starter', 'bronze', 'silver', 'gold'].map(level => {
           const count = members.filter(m => (m.member_points?.[0]?.level || 'starter') === level).length;
           return (
-            <div key={level} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-              <div className="text-sm text-gray-400 capitalize mb-1">{level}</div>
-              <div className="text-2xl font-bold text-white">{count}</div>
+            <div key={level} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-all">
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{level}</div>
+              <div className="text-3xl font-black text-gray-900">{count}</div>
             </div>
           );
         })}
       </div>
 
-      {/* Members Table */}
-      <div className="bg-gray-800 rounded-lg overflow-hidden">
+      {/* Members List - Mobile Card View */}
+      <div className="lg:hidden space-y-4 mb-10">
+        {filteredMembers.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
+            <p className="text-gray-500 font-medium">{search ? 'Nenhum membro encontrado' : 'Nenhum membro registrado'}</p>
+          </div>
+        ) : (
+          filteredMembers.map((member) => (
+            <div key={member.id} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+              <div className="flex justify-between items-start mb-4">
+                <div className="min-w-0">
+                  <div className="font-bold text-gray-900 truncate">{member.profile_data?.full_name || '—'}</div>
+                  <div className="text-xs text-gray-500 truncate">{member.email || member.auth_id.slice(0, 8)}</div>
+                </div>
+                <button
+                  onClick={() => handleExpandMember(member.id)}
+                  className={`p-2 rounded-xl transition-colors ${expandedMember === member.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-50 text-gray-400 hover:text-gray-600'}`}
+                >
+                  {expandedMember === member.id ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1">Nível</div>
+                  <select
+                    value={member.member_points?.[0]?.level || 'starter'}
+                    onChange={(e) => handleUpdateLevel(member.id, e.target.value)}
+                    className={`w-full px-2 py-1 rounded-lg text-xs font-bold border-0 cursor-pointer ${LEVEL_COLORS[member.member_points?.[0]?.level || 'starter'] || LEVEL_COLORS.starter}`}
+                  >
+                    <option value="starter">Starter</option>
+                    <option value="bronze">Bronze</option>
+                    <option value="silver">Silver</option>
+                    <option value="gold">Gold</option>
+                    <option value="platinum">Platinum</option>
+                    <option value="diamond">Diamond</option>
+                  </select>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1">Pontos</div>
+                  <div className="text-sm font-bold text-gray-900">{member.member_points?.[0]?.total_points || 0}</div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center gap-1 font-medium">
+                  <span className="uppercase">{member.profile_data?.country || '—'}</span>
+                </div>
+                <div className="font-medium">
+                  {new Date(member.registration_date).toLocaleDateString('pt-BR')}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Members Table - Desktop */}
+      <div className="hidden lg:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-10">
         <table className="w-full">
-          <thead className="bg-gray-900">
-            <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Membro</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Nível</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Pontos</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">País</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Registo</th>
-              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Ações</th>
+          <thead>
+            <tr className="bg-gray-50/50 border-b border-gray-100">
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Membro</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Nível</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Pontos</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">País</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Registo</th>
+              <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-700">
+          <tbody className="divide-y divide-gray-100">
             {filteredMembers.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
+                <td colSpan={6} className="px-6 py-16 text-center text-gray-500 font-medium">
                   {search ? 'Nenhum membro encontrado' : 'Nenhum membro registrado'}
                 </td>
               </tr>
             ) : (
               filteredMembers.map((member) => (
-                <tr key={member.id} className="group">
+                <tr key={member.id} className="hover:bg-gray-50/50 transition-colors group">
                   {/* Member Info Row */}
                   <td className="px-6 py-4">
-                    <div>
-                      <div className="font-semibold text-white">{member.profile_data?.full_name || '—'}</div>
-                      <div className="text-sm text-gray-400">{member.email || member.auth_id.slice(0, 8)}</div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{member.profile_data?.full_name || '—'}</div>
+                      <div className="text-sm text-gray-500">{member.email || member.auth_id.slice(0, 8)}</div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <select
                       value={member.member_points?.[0]?.level || 'starter'}
                       onChange={(e) => handleUpdateLevel(member.id, e.target.value)}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold border-0 cursor-pointer ${LEVEL_COLORS[member.member_points?.[0]?.level || 'starter'] || LEVEL_COLORS.starter}`}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold border-0 cursor-pointer shadow-sm transition-transform active:scale-95 ${LEVEL_COLORS[member.member_points?.[0]?.level || 'starter'] || LEVEL_COLORS.starter}`}
                     >
                       <option value="starter">Starter</option>
                       <option value="bronze">Bronze</option>
@@ -331,21 +390,21 @@ export function Members() {
                       <option value="diamond">Diamond</option>
                     </select>
                   </td>
-                  <td className="px-6 py-4 text-gray-300">{member.member_points?.[0]?.total_points || 0}</td>
-                  <td className="px-6 py-4 text-gray-300 uppercase text-sm">{member.profile_data?.country || '—'}</td>
-                  <td className="px-6 py-4 text-gray-400 text-sm">
+                  <td className="px-6 py-4 text-sm font-bold text-gray-700">{member.member_points?.[0]?.total_points || 0}</td>
+                  <td className="px-6 py-4 text-gray-600 font-bold uppercase text-xs tracking-tight">{member.profile_data?.country || '—'}</td>
+                  <td className="px-6 py-4 text-gray-500 text-sm font-medium">
                     {new Date(member.registration_date).toLocaleDateString('pt-BR')}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => handleExpandMember(member.id)}
-                      className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
+                      className={`p-2 rounded-xl transition-all ${expandedMember === member.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
                       title="Gerir acessos"
                     >
                       {expandedMember === member.id ? (
-                        <ChevronUp className="w-4 h-4" />
+                        <ChevronUp className="w-5 h-5" />
                       ) : (
-                        <ChevronDown className="w-4 h-4" />
+                        <ChevronDown className="w-5 h-5" />
                       )}
                     </button>
                   </td>
@@ -358,31 +417,31 @@ export function Members() {
 
       {/* Expanded Grants Panel */}
       {expandedMember && (
-        <div className="mt-4 bg-gray-800/50 border border-gray-700 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Gift className="w-5 h-5 text-purple-400" />
-              Acessos concedidos
+        <div className="mt-6 bg-white border border-gray-100 rounded-2xl p-6 shadow-xl shadow-gray-200/50 animate-in fade-in slide-in-from-top-4">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <Gift className="w-6 h-6 text-purple-500" />
+              Acessos Concedidos
             </h3>
             <button
               onClick={() => setShowGrantForm(!showGrantForm)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors"
+              className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-bold rounded-xl transition-all shadow-lg ${showGrantForm ? 'bg-gray-500' : 'bg-purple-600 hover:bg-purple-700 shadow-purple-100'}`}
             >
-              <Plus className="w-4 h-4" />
-              Conceder acesso
+              {showGrantForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {showGrantForm ? 'Cancelar' : 'Conceder Acesso'}
             </button>
           </div>
 
           {/* Grant Form */}
           {showGrantForm && (
-            <div className="bg-gray-900 rounded-lg p-4 mb-4 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-gray-50 rounded-2xl p-6 mb-6 space-y-4 border border-gray-100">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Produto</label>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Produto</label>
                   <select
                     value={grantProductId}
                     onChange={(e) => setGrantProductId(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm font-medium focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                   >
                     <option value="">Selecione...</option>
                     {products.map(p => (
@@ -391,39 +450,33 @@ export function Members() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Expira em</label>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Expira em</label>
                   <input
                     type="date"
                     value={grantExpiresAt}
                     onChange={(e) => setGrantExpiresAt(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm font-medium focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Vazio = permanente</p>
+                  <p className="text-[10px] text-gray-400 mt-1 font-bold italic">Deixe vazio para acesso permanente</p>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Notas</label>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Notas</label>
                   <input
                     type="text"
                     value={grantNotes}
                     onChange={(e) => setGrantNotes(e.target.value)}
                     placeholder="Ex: Cortesia, parceria..."
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm font-medium focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setShowGrantForm(false)}
-                  className="px-4 py-2 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-600"
-                >
-                  Cancelar
-                </button>
+              <div className="flex justify-end pt-2">
                 <button
                   onClick={handleAddGrant}
                   disabled={!grantProductId}
-                  className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                  className="px-8 py-3 bg-purple-600 text-white text-sm font-bold rounded-xl hover:bg-purple-700 disabled:opacity-50 shadow-lg shadow-purple-100 transition-all active:scale-95"
                 >
-                  Confirmar
+                  Confirmar Concessão
                 </button>
               </div>
             </div>
@@ -431,23 +484,30 @@ export function Members() {
 
           {/* Grants List */}
           {grants.length === 0 ? (
-            <p className="text-gray-500 text-sm">Nenhum acesso manual concedido a este membro.</p>
+            <div className="text-center py-10 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+              <p className="text-gray-400 font-medium">Nenhum acesso manual concedido a este membro.</p>
+            </div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {grants.map((g) => (
-                <div key={g.id} className="flex items-center justify-between bg-gray-900 rounded-lg px-4 py-3">
-                  <div>
-                    <div className="text-sm font-medium text-white">{g.product_title}</div>
-                    <div className="text-xs text-gray-400">
-                      {g.expires_at
-                        ? `Expira: ${new Date(g.expires_at).toLocaleDateString('pt-BR')}`
-                        : 'Permanente'}
-                      {g.notes && ` • ${g.notes}`}
+                <div key={g.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm group hover:border-purple-200 transition-colors">
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold text-gray-900 truncate">{g.product_title}</div>
+                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-tight flex items-center gap-1.5">
+                      <span className={g.expires_at ? 'text-amber-600' : 'text-emerald-600'}>
+                        {g.expires_at ? `Expira: ${new Date(g.expires_at).toLocaleDateString('pt-BR')}` : 'Permanente'}
+                      </span>
+                      {g.notes && (
+                        <>
+                          <span className="w-1 h-1 rounded-full bg-gray-300" />
+                          <span className="truncate">{g.notes}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                   <button
                     onClick={() => handleRevokeGrant(g.id)}
-                    className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                    className="p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                     title="Revogar acesso"
                   >
                     <X className="w-4 h-4" />

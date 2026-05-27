@@ -2,6 +2,9 @@
 // ADMIN — Level Rewards Management
 // ============================================
 import { useState, useEffect, useCallback } from 'react';
+import { Plus as LucidePlus } from 'lucide-react';
+
+const Plus = LucidePlus as any;
 
 const API = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 const ADMIN_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
@@ -219,7 +222,9 @@ export default function LevelRewards() {
       });
       const data = await res.json();
       if (data.success) fetchRewards();
-    } catch {}
+    } catch (err) {
+      console.error('Toggle active error:', err);
+    }
   };
 
   const groupedRewards = LEVELS.reduce((acc, level) => {
@@ -228,50 +233,51 @@ export default function LevelRewards() {
   }, {} as Record<string, LevelReward[]>);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto overflow-x-hidden">
       {/* Header */}
-      <div className="mb-6 sm:mb-8 flex items-center justify-between">
+      <div className="mb-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
-            🎁 Recompensas por Nível
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+            Recompensas por Nível
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="mt-2 text-base text-gray-500">
             Gerencie as recompensas que os utilizadores desbloqueiam ao subir de nível
           </p>
         </div>
         {activeTab === 'config' && (
           <button
             onClick={() => { resetForm(); setShowForm(true); }}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            className="w-full sm:w-auto px-6 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-100 active:scale-95 flex items-center justify-center gap-2"
           >
-            + Nova Recompensa
+            <Plus className="w-5 h-5" />
+            Nova Recompensa
           </button>
         )}
       </div>
 
-      {/* Elegant glassmorphic tabs */}
-      <div className="flex border-b border-gray-200 mb-6 gap-6">
+      {/* Elegant tabs */}
+      <div className="flex flex-wrap border-b border-gray-100 mb-8 gap-6">
         <button
           onClick={() => setActiveTab('config')}
-          className={`pb-3 text-sm font-semibold transition-all relative ${
+          className={`pb-4 text-sm font-bold transition-all relative ${
             activeTab === 'config'
-              ? 'text-blue-600 border-b-2 border-blue-600'
+              ? 'text-primary-600 border-b-2 border-primary-600'
               : 'text-gray-400 hover:text-gray-600'
           }`}
         >
-          🛠️ Configurar Recompensas
+          Configurar Recompensas
         </button>
         <button
           onClick={() => setActiveTab('claims')}
-          className={`pb-3 text-sm font-semibold transition-all relative flex items-center gap-2 ${
+          className={`pb-4 text-sm font-bold transition-all relative flex items-center gap-2 ${
             activeTab === 'claims'
-              ? 'text-blue-600 border-b-2 border-blue-600'
+              ? 'text-primary-600 border-b-2 border-primary-600'
               : 'text-gray-400 hover:text-gray-600'
           }`}
         >
-          📥 Resgates Solicitados
+          Resgates Solicitados
           {claims.filter(c => !c.is_used).length > 0 && (
-            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+            <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
               {claims.filter(c => !c.is_used).length}
             </span>
           )}
@@ -290,12 +296,12 @@ export default function LevelRewards() {
 
       {/* Tab Content: Claims */}
       {activeTab === 'claims' && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-700 text-sm">Lista de Solicitações de Resgate</h3>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-in fade-in">
+          <div className="px-6 py-5 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
+            <h3 className="font-bold text-gray-900 text-sm">Solicitações de Resgate</h3>
             <button
               onClick={fetchClaims}
-              className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+              className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1 transition-colors"
             >
               🔄 Atualizar
             </button>
@@ -387,11 +393,12 @@ export default function LevelRewards() {
         <>
           {/* Create/Edit Form */}
           {showForm && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mb-6">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">
-                {editingId ? '✏️ Editar Recompensa' : '➕ Nova Recompensa'}
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 lg:p-8 shadow-sm mb-8 animate-in fade-in slide-in-from-top-4">
+              <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-6 flex items-center gap-2">
+                <div className="w-2 h-6 bg-primary-600 rounded-full" />
+                {editingId ? 'Editar Recompensa' : 'Nova Recompensa'}
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {/* Level */}
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Nível</label>
@@ -517,13 +524,13 @@ export default function LevelRewards() {
 
           {/* Rewards grouped by level */}
           {!loading && (
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6">
               {LEVELS.map((level) => {
                 const levelRewards = groupedRewards[level];
                 return (
-                  <div key={level} className={`bg-white rounded-xl border shadow-sm overflow-hidden ${LEVEL_COLORS[level]?.split(' ').find(c => c.startsWith('border-')) || 'border-gray-200'}`}>
+                  <div key={level} className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${LEVEL_COLORS[level]?.split(' ').find(c => c.startsWith('border-')) || 'border-gray-100'}`}>
                     {/* Level Header */}
-                    <div className={`px-5 py-3 ${LEVEL_COLORS[level]} border-b flex items-center justify-between`}>
+                    <div className={`px-6 py-4 ${LEVEL_COLORS[level]} border-b flex items-center justify-between`}>
                       <div className="flex items-center gap-2">
                         <span className="text-xl">{LEVEL_ICONS[level]}</span>
                         <h3 className="font-semibold capitalize text-sm">{level}</h3>
