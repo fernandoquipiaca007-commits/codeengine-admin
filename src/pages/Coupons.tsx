@@ -215,7 +215,7 @@ export default function Coupons() {
         ) : coupons.length === 0 ? (
           <p className="p-8 text-center text-gray-500">Nenhum cupom global.</p>
         ) : (
-          <table className="min-w-full text-sm">
+          <table className="min-w-[750px] lg:min-w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left">Código</th>

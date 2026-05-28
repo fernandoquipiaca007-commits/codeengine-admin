@@ -288,8 +288,8 @@ export function Members() {
       </div>
 
       {/* Members Table */}
-      <div className="bg-gray-800 rounded-lg overflow-hidden">
-        <table className="w-full">
+      <div className="bg-gray-800 rounded-lg overflow-x-auto">
+        <table className="w-full min-w-[800px]">
           <thead className="bg-gray-900">
             <tr>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Membro</th>

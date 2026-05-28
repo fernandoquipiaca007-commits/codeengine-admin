@@ -277,7 +277,7 @@ export default function ProductTable({
           </div>
 
           <div className="hidden md:block overflow-x-auto shadow ring-1 ring-black ring-opacity-5 rounded-lg">
-            <table className="min-w-full divide-y divide-gray-300">
+            <table className="min-w-full md:min-w-[950px] lg:min-w-full divide-y divide-gray-300">
             <thead className="bg-gray-50">
               <tr>
                 <th
