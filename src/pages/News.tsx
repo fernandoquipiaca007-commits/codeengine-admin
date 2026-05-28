@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, Calendar, TrendingUp, Globe, Heart } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Calendar, TrendingUp, Globe, Heart, Upload, Copy } from 'lucide-react';
 import { supabaseAdmin as supabase } from '../lib/supabase-admin';
 
 // Typesafe bypass for React 18 JSX typing mismatch (TS2786)
@@ -11,6 +11,8 @@ const CalendarIcon = Calendar as any;
 const TrendingIcon = TrendingUp as any;
 const GlobeIcon = Globe as any;
 const HeartIcon = Heart as any;
+const UploadIcon = Upload as any;
+const CopyIcon = Copy as any;
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 const ADMIN_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
@@ -71,6 +73,104 @@ export function News() {
   const [status, setStatus] = useState<'draft' | 'published' | 'archived'>('draft');
   const [publishedAt, setPublishedAt] = useState('');
   const [isFeatured, setIsFeatured] = useState(false);
+
+  // Upload state
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingMultiple, setUploadingMultiple] = useState(false);
+  const [sessionImages, setSessionImages] = useState<string[]>([]);
+
+  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCover(true);
+    try {
+      const { uploadFile, generatePublicUrl } = await import('../lib/storage');
+      const timestamp = Date.now();
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `news-covers/${timestamp}_${sanitizedName}`;
+      
+      const path = await uploadFile('product-covers', filePath, file);
+      const publicUrl = generatePublicUrl('product-covers', path);
+      
+      setThumbnailUrl(publicUrl);
+    } catch (err: any) {
+      console.error('Error uploading cover:', err);
+      alert('❌ Erro no upload da capa:\n\n' + err.message);
+    } finally {
+      setUploadingCover(false);
+      if (e.target) e.target.value = '';
+    }
+  }
+
+  async function handleMultipleImagesUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingMultiple(true);
+    try {
+      const { uploadFile, generatePublicUrl } = await import('../lib/storage');
+      const uploaded: string[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const timestamp = Date.now();
+        const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const filePath = `news-body/${timestamp}_${sanitizedName}`;
+
+        const path = await uploadFile('product-covers', filePath, file);
+        const publicUrl = generatePublicUrl('product-covers', path);
+        uploaded.push(publicUrl);
+      }
+
+      setSessionImages(prev => {
+        const combined = [...prev];
+        uploaded.forEach(url => {
+          if (!combined.includes(url)) combined.push(url);
+        });
+        return combined;
+      });
+    } catch (err: any) {
+      console.error('Error uploading multiple images:', err);
+      alert('❌ Erro no upload das imagens:\n\n' + err.message);
+    } finally {
+      setUploadingMultiple(false);
+      if (e.target) e.target.value = '';
+    }
+  }
+
+  function insertImageIntoContent(url: string) {
+    const markdown = `\n\n![Imagem](${url})\n\n`;
+    if (activeLang === 'pt') {
+      setContent(prev => prev + markdown);
+    } else {
+      setTranslations(prev => ({
+        ...prev,
+        [activeLang]: {
+          ...prev[activeLang],
+          content: (prev[activeLang]?.content || '') + markdown
+        }
+      }));
+    }
+    alert('✅ Imagem inserida no final do conteúdo!');
+  }
+
+  async function handleDeleteUploadedImage(url: string) {
+    if (!confirm('⚠️ Deseja excluir esta imagem do servidor?\n\nIsso removerá a imagem do banco de dados de armazenamento. Certifique-se de que ela não está sendo usada em outro artigo.')) return;
+
+    try {
+      const { deleteFile, extractStoragePathFromUrl } = await import('../lib/storage');
+      const path = extractStoragePathFromUrl(url, 'product-covers');
+      if (path) {
+        await deleteFile('product-covers', path);
+      }
+      setSessionImages(prev => prev.filter(img => img !== url));
+      alert('✅ Imagem excluída com sucesso!');
+    } catch (err: any) {
+      console.error('Error deleting image:', err);
+      alert('❌ Erro ao excluir imagem:\n\n' + err.message);
+    }
+  }
 
   useEffect(() => {
     loadNews();
@@ -148,6 +248,7 @@ export function News() {
     setEditingNews(null);
     setShowForm(false);
     setActiveLang('pt');
+    setSessionImages([]);
     setTranslations({
       pt: { title: '', slug: '', excerpt: '', content: '' },
       en: { title: '', slug: '', excerpt: '', content: '' },
@@ -171,6 +272,16 @@ export function News() {
     setActiveLang('pt');
     setShowForm(true);
 
+    // Parse existing images from content
+    const parsedImages: string[] = [];
+    const imageRegex = /!\[.*?\]\((.*?)\)/g;
+    let match;
+    while ((match = imageRegex.exec(article.content)) !== null) {
+      if (!parsedImages.includes(match[1])) {
+        parsedImages.push(match[1]);
+      }
+    }
+
     // Load existing translations
     try {
       const { data: trans } = await supabase
@@ -186,11 +297,21 @@ export function News() {
       (trans || []).forEach((t: any) => {
         if (t.language === 'en' || t.language === 'fr') {
           map[t.language as Lang] = { id: t.id, news_id: t.news_id, language: t.language, title: t.title, slug: t.slug, excerpt: t.excerpt || '', content: t.content };
+          
+          // Parse translation content for images too
+          let transMatch;
+          while ((transMatch = imageRegex.exec(t.content || '')) !== null) {
+            if (!parsedImages.includes(transMatch[1])) {
+              parsedImages.push(transMatch[1]);
+            }
+          }
         }
       });
       setTranslations(map);
+      setSessionImages(parsedImages);
     } catch (err) {
       console.error('Error loading news translations:', err);
+      setSessionImages(parsedImages);
     }
   }
 
@@ -607,18 +728,39 @@ export function News() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                URL da Thumbnail <span className="text-gray-500">(opcional)</span>
-              </label>
-              <input
-                type="url"
-                value={thumbnailUrl}
-                onChange={(e) => setThumbnailUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/photo-..."
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              />
-              <p className="text-xs text-gray-400 mt-1">Recomendado: 800x600px ou maior</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-900/20 border border-gray-700/60 rounded-xl p-4 sm:p-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  URL da Thumbnail <span className="text-gray-500">(opcional)</span>
+                </label>
+                <input
+                  type="url"
+                  value={thumbnailUrl}
+                  onChange={(e) => setThumbnailUrl(e.target.value)}
+                  placeholder="https://images.unsplash.com/photo-..."
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">Recomendado: 800x600px ou maior</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Fazer Upload da Capa (Thumbnail)
+                </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCoverUpload}
+                    disabled={uploadingCover}
+                    className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600/10 file:text-blue-400 hover:file:bg-blue-600/20 file:cursor-pointer"
+                  />
+                  {uploadingCover && (
+                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">PNG, JPG ou WebP até 5MB</p>
+              </div>
             </div>
 
             <div>
@@ -680,6 +822,82 @@ export function News() {
                 required={activeLang === 'pt'}
               />
               <p className="text-xs text-gray-400 mt-1">Use Markdown para formatação: # para títulos, ** para negrito, - para listas</p>
+            </div>
+
+            {/* Imagens do Artigo Section */}
+            <div className="bg-gray-900/40 border border-gray-700 rounded-lg p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Galeria de Imagens do Artigo</h3>
+                  <p className="text-xs text-gray-400">Faça upload de múltiplas imagens para usar no corpo da sua notícia.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleMultipleImagesUpload}
+                    disabled={uploadingMultiple}
+                    id="multiple-images-upload"
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="multiple-images-upload"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer"
+                  >
+                    {uploadingMultiple ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Carregando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UploadIcon className="w-4 h-4" />
+                        <span>Fazer Upload de Imagens</span>
+                      </>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              {sessionImages.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pt-4 border-t border-gray-700/60">
+                  {sessionImages.map((url, i) => (
+                    <div key={i} className="group relative bg-gray-800 border border-gray-700 rounded-lg overflow-hidden aspect-video flex flex-col justify-between">
+                      <img src={url} alt={`Upload ${i}`} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`![Imagem](${url})`);
+                            alert('📋 Link formatado em Markdown copiado!');
+                          }}
+                          className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded text-blue-400 hover:text-white"
+                          title="Copiar Markdown"
+                        >
+                          <CopyIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertImageIntoContent(url)}
+                          className="p-1.5 bg-blue-600 hover:bg-blue-500 rounded text-white"
+                          title="Inserir no Conteúdo"
+                        >
+                          <PlusIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUploadedImage(url)}
+                          className="p-1.5 bg-red-600 hover:bg-red-500 rounded text-white"
+                          title="Excluir Imagem"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4">
