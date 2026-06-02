@@ -19,6 +19,7 @@ import ReferralDashboard from './pages/ReferralDashboard';
 import LevelRewards from './pages/LevelRewards';
 import FastPayOrders from './pages/FastPayOrders';
 import { Members } from './pages/Members';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
   return (
@@ -40,8 +41,9 @@ function App() {
                   <div className="flex flex-1 min-h-0 overflow-hidden">
                   <Sidebar />
                   <main className="flex-1 overflow-y-auto content-safe pb-20 lg:pb-0">
-                    <Routes>
-                      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <ErrorBoundary>
+                      <Routes>
+                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/dashboard" element={<Dashboard />} />
                       
                       {/* Virtual helper routes to open creation forms dynamically */}
@@ -162,7 +164,8 @@ function App() {
                           </ProtectedRoute>
                         }
                       />
-                    </Routes>
+                      </Routes>
+                    </ErrorBoundary>
                   </main>
                   </div>
                 </div>
