@@ -35,7 +35,27 @@ import { CampaignsManager } from '../components/products/CampaignsManager';
 import { CustomSectionsManager } from '../components/products/CustomSectionsManager';
 import { MediaGallery } from '../components/products/MediaGallery';
 
-const STORE_URL = import.meta.env.VITE_STORE_URL || 'http://localhost:3000';
+function getStoreUrl(): string {
+  if (typeof window === 'undefined') return import.meta.env.VITE_STORE_URL || 'http://localhost:3000';
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return import.meta.env.VITE_STORE_URL || 'http://localhost:3000';
+  }
+  if (hostname.startsWith('admin.')) {
+    return `${protocol}//${hostname.substring(6)}`;
+  }
+  if (hostname.includes('-admin.')) {
+    return `${protocol}//${hostname.replace('-admin.', '.')}`;
+  }
+  if (hostname.endsWith('-admin.vercel.app')) {
+    return `${protocol}//${hostname.replace('-admin.vercel.app', '.vercel.app')}`;
+  }
+  if (hostname.endsWith('-admin.netlify.app')) {
+    return `${protocol}//${hostname.replace('-admin.netlify.app', '.netlify.app')}`;
+  }
+  return import.meta.env.VITE_STORE_URL || 'http://localhost:3000';
+}
 
 interface Product {
   id: string;
@@ -245,7 +265,7 @@ export function ProductPageBuilder() {
             </div>
             <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3">
               <button
-                onClick={() => window.open(`${STORE_URL}/product?id=${product.id}`, '_blank')}
+                onClick={() => window.open(`${getStoreUrl()}/product?id=${product.id}`, '_blank')}
                 className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors touch-target"
               >
                 <Eye className="w-4 h-4" />

@@ -170,10 +170,10 @@ export async function updateProduct(
       return { success: false, error: 'Sessão expirada. Reconecte sem sair da página.' };
     }
 
-    let coverStoragePath = existingProduct.cover_storage_path || existingProduct.cover_url;
-    let previewStoragePath = existingProduct.preview_storage_path || existingProduct.preview_url;
-    let videoStoragePath = existingProduct.video_storage_path || existingProduct.video_url;
-    let fileStoragePath = existingProduct.file_storage_path || existingProduct.storage_url;
+    let coverStoragePath = formData.cover_url ? (existingProduct.cover_storage_path || existingProduct.cover_url) : null;
+    let previewStoragePath = formData.preview_url ? (existingProduct.preview_storage_path || existingProduct.preview_url) : null;
+    let videoStoragePath = formData.video_url ? (existingProduct.video_storage_path || existingProduct.video_url) : null;
+    let fileStoragePath = formData.storage_url ? (existingProduct.file_storage_path || existingProduct.storage_url) : null;
 
     // Upload new cover if provided
     if (formData.cover_file) {
@@ -257,7 +257,7 @@ export async function updateProduct(
         video_storage_path: videoStoragePath,
         file_storage_path: fileStoragePath,
         // Keep old columns for backward compatibility
-        cover_url: coverStoragePath.startsWith('http') ? coverStoragePath : generatePublicUrl(STORAGE_BUCKETS.PRODUCT_COVERS.name, coverStoragePath),
+        cover_url: coverStoragePath ? (coverStoragePath.startsWith('http') ? coverStoragePath : generatePublicUrl(STORAGE_BUCKETS.PRODUCT_COVERS.name, coverStoragePath)) : null,
         preview_url: previewStoragePath ? (previewStoragePath.startsWith('http') ? previewStoragePath : generatePublicUrl(STORAGE_BUCKETS.PRODUCT_PREVIEWS.name, previewStoragePath)) : null,
         video_url: videoStoragePath ? (videoStoragePath.startsWith('http') ? videoStoragePath : generatePublicUrl(STORAGE_BUCKETS.PRODUCT_VIDEOS.name, videoStoragePath)) : null,
         storage_url: fileStoragePath,

@@ -20,6 +20,7 @@ interface CompactFileUploadProps {
   required?: boolean;
   currentFile?: string;
   onFileSelect: (file: File | undefined) => void;
+  onClearCurrent?: () => void;
   helpText?: string;
 }
 
@@ -30,6 +31,7 @@ export function CompactFileUpload({
   required = false,
   currentFile,
   onFileSelect,
+  onClearCurrent,
   helpText,
 }: CompactFileUploadProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -149,7 +151,7 @@ export function CompactFileUpload({
               </>
             )}
           </div>
-          {selectedFile && (
+          {selectedFile ? (
             <button
               type="button"
               onClick={handleRemove}
@@ -157,7 +159,16 @@ export function CompactFileUpload({
             >
               <X className="w-4 h-4 text-gray-500" />
             </button>
-          )}
+          ) : currentFile && onClearCurrent ? (
+            <button
+              type="button"
+              onClick={onClearCurrent}
+              className="ml-2 p-1 hover:bg-gray-200 rounded-full transition-colors group"
+              title="Remover arquivo atual"
+            >
+              <X className="w-4 h-4 text-red-500 hover:text-red-700 transition-colors" />
+            </button>
+          ) : null}
         </div>
       ) : (
         <div

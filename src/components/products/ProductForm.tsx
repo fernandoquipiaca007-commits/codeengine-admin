@@ -27,6 +27,10 @@ export interface ProductFormData {
   preview_file?: File;
   video_file?: File;
   product_file?: File;
+  cover_url?: string;
+  preview_url?: string;
+  storage_url?: string;
+  video_url?: string;
   enabledLanguages: AppLocale[];
   translations: ProductTranslationsMap;
   product_type?: 'file' | 'course' | 'ebook';
@@ -65,6 +69,10 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     aoa_price: (product as any)?.aoa_price || 0,
     subcategory_id: (product as any)?.subcategory_id || '',
     enabledLanguages: ['pt'] as AppLocale[],
+    cover_url: product?.cover_url || '',
+    preview_url: product?.preview_url || '',
+    storage_url: product?.storage_url || '',
+    video_url: product?.video_url || '',
     translations: {
       pt: {
         title: product?.title || '',
@@ -691,7 +699,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
               maxSize={5 * 1024 * 1024}
               required={!product && activeLang === 'pt'}
-              currentFile={(activeLang === 'pt' ? product?.cover_url : formData.translations[activeLang]?.cover_url) || undefined}
+              currentFile={(activeLang === 'pt' ? formData.cover_url : formData.translations[activeLang]?.cover_url) || undefined}
               onFileSelect={(file) => {
                 if (activeLang === 'pt') {
                   setFormData({ ...formData, cover_file: file });
@@ -701,6 +709,26 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
                     translations: {
                       ...prev.translations,
                       [activeLang]: { ...prev.translations[activeLang], title: prev.translations[activeLang]?.title || '', description: prev.translations[activeLang]?.description || '', cta_text: prev.translations[activeLang]?.cta_text || '', cover_file: file }
+                    }
+                  }));
+                }
+              }}
+              onClearCurrent={() => {
+                if (activeLang === 'pt') {
+                  setFormData({ ...formData, cover_url: '', cover_file: undefined });
+                } else {
+                  setFormData(prev => ({
+                    ...prev,
+                    translations: {
+                      ...prev.translations,
+                      [activeLang]: {
+                        ...prev.translations[activeLang],
+                        title: prev.translations[activeLang]?.title || '',
+                        description: prev.translations[activeLang]?.description || '',
+                        cta_text: prev.translations[activeLang]?.cta_text || '',
+                        cover_url: '',
+                        cover_file: undefined
+                      }
                     }
                   }));
                 }
@@ -715,7 +743,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               label={`Arquivo de Preview (${activeLang.toUpperCase()})`}
               accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
               maxSize={10 * 1024 * 1024}
-              currentFile={(activeLang === 'pt' ? product?.preview_url : formData.translations[activeLang]?.preview_url) || undefined}
+              currentFile={(activeLang === 'pt' ? formData.preview_url : formData.translations[activeLang]?.preview_url) || undefined}
               onFileSelect={(file) => {
                 if (activeLang === 'pt') {
                   setFormData({ ...formData, preview_file: file });
@@ -725,6 +753,26 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
                     translations: {
                       ...prev.translations,
                       [activeLang]: { ...prev.translations[activeLang], title: prev.translations[activeLang]?.title || '', description: prev.translations[activeLang]?.description || '', cta_text: prev.translations[activeLang]?.cta_text || '', preview_file: file }
+                    }
+                  }));
+                }
+              }}
+              onClearCurrent={() => {
+                if (activeLang === 'pt') {
+                  setFormData({ ...formData, preview_url: '', preview_file: undefined });
+                } else {
+                  setFormData(prev => ({
+                    ...prev,
+                    translations: {
+                      ...prev.translations,
+                      [activeLang]: {
+                        ...prev.translations[activeLang],
+                        title: prev.translations[activeLang]?.title || '',
+                        description: prev.translations[activeLang]?.description || '',
+                        cta_text: prev.translations[activeLang]?.cta_text || '',
+                        preview_url: '',
+                        preview_file: undefined
+                      }
                     }
                   }));
                 }
@@ -739,8 +787,11 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               label="Vídeo Promocional"
               accept="video/mp4,video/webm,video/ogg,.mp4,.webm,.ogg"
               maxSize={100 * 1024 * 1024}
-              currentFile={product?.video_url || undefined}
+              currentFile={formData.video_url || undefined}
               onFileSelect={(file) => setFormData({ ...formData, video_file: file })}
+              onClearCurrent={() => {
+                setFormData({ ...formData, video_url: '', video_file: undefined });
+              }}
               helpText="Max 100MB • MP4, WebM, OGG (Partilhado por todos idiomas)"
             />
           )}
@@ -752,7 +803,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               accept=".pdf,.zip,.epub,.docx,.mp4,.rar,.7z"
               maxSize={2 * 1024 * 1024 * 1024}
               required={!product && activeLang === 'pt'}
-              currentFile={(activeLang === 'pt' ? product?.storage_url : formData.translations[activeLang]?.storage_url) || undefined}
+              currentFile={(activeLang === 'pt' ? formData.storage_url : formData.translations[activeLang]?.storage_url) || undefined}
               onFileSelect={(file) => {
                 if (activeLang === 'pt') {
                   setFormData({ ...formData, product_file: file });
@@ -770,6 +821,26 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
                       },
                     },
                   });
+                }
+              }}
+              onClearCurrent={() => {
+                if (activeLang === 'pt') {
+                  setFormData({ ...formData, storage_url: '', product_file: undefined });
+                } else {
+                  setFormData(prev => ({
+                    ...prev,
+                    translations: {
+                      ...prev.translations,
+                      [activeLang]: {
+                        ...prev.translations[activeLang],
+                        title: prev.translations[activeLang]?.title || '',
+                        description: prev.translations[activeLang]?.description || '',
+                        cta_text: prev.translations[activeLang]?.cta_text || 'Comprar Agora',
+                        storage_url: '',
+                        product_file: undefined
+                      }
+                    }
+                  }));
                 }
               }}
               helpText="PDF, ZIP, EPUB, DOCX, MP4 — arquivo por idioma"
