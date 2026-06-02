@@ -52,6 +52,11 @@ interface NewsTranslation {
 export function News() {
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 10;
+
   const [showForm, setShowForm] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null);
   const [activeLang, setActiveLang] = useState<Lang>('pt');
@@ -185,12 +190,22 @@ export function News() {
     }
   }, []);
 
-  async function loadNews() {
+  async function loadNews(pageToLoad = 0, append = false) {
+    if (pageToLoad === 0 && !append) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
     try {
+      const from = pageToLoad * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
       const { data, error } = await supabase
         .from('news')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) {
         if (error.code === '42P01') {
@@ -199,7 +214,15 @@ export function News() {
         throw error;
       }
 
-      setNews(data || []);
+      const fetchedNews = data || [];
+      if (append) {
+        setNews(prev => [...prev, ...fetchedNews]);
+      } else {
+        setNews(fetchedNews);
+      }
+
+      setHasMore(fetchedNews.length === PAGE_SIZE);
+      setPage(pageToLoad);
     } catch (error: any) {
       console.error('Error loading news:', error);
       
@@ -223,7 +246,13 @@ export function News() {
       alert(errorMessage);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
+  }
+
+  async function loadMore() {
+    if (loadingMore) return;
+    await loadNews(page + 1, true);
   }
 
   function generateSlug(title: string) {
@@ -1042,6 +1071,18 @@ export function News() {
             )}
           </tbody>
         </table>
+
+        {hasMore && (
+          <div className="flex justify-center p-6 bg-gray-900/50 border-t border-gray-700">
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
+            >
+              {loadingMore ? 'A carregar...' : 'Ver mais notícias'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
