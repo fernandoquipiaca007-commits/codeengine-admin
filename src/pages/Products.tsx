@@ -27,6 +27,15 @@ export default function Products() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'create') {
+      setViewMode('create');
+      const newUrl = window.location.origin + window.location.pathname + window.location.hash;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
   async function loadData() {
     setLoading(true);
     try {

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ConnectionProvider } from './contexts/ConnectionContext';
 import { ToastProvider } from './contexts/ToastContext';
@@ -44,6 +44,24 @@ function App() {
                       <Route path="/" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/dashboard" element={<Dashboard />} />
                       
+                      {/* Virtual helper routes to open creation forms dynamically */}
+                      <Route
+                        path="/news/create"
+                        element={<Navigate to="/news?action=create" replace />}
+                      />
+                      <Route
+                        path="/noticia/create"
+                        element={<Navigate to="/news?action=create" replace />}
+                      />
+                      <Route
+                        path="/products/create"
+                        element={<Navigate to="/products?action=create" replace />}
+                      />
+                      <Route
+                        path="/produto/create"
+                        element={<Navigate to="/products?action=create" replace />}
+                      />
+
                       <Route
                         path="/products"
                         element={
