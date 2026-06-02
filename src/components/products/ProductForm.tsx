@@ -396,7 +396,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             id="price"
             step="0.01"
             min="0"
-            value={formData.is_free ? 0 : formData.price}
+            value={formData.is_free ? 0 : (formData.price === 0 ? '' : formData.price)}
             disabled={formData.is_free}
             onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
             className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm disabled:bg-gray-100 disabled:text-gray-500 ${
@@ -421,7 +421,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
                 type="number"
                 id="aoa_price"
                 min="0"
-                value={formData.aoa_price || 0}
+                value={formData.aoa_price || ''}
                 onChange={(e) => setFormData({ ...formData, aoa_price: parseFloat(e.target.value) || 0 })}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                 placeholder="Ex: 50000"

@@ -60,11 +60,12 @@ export default function ProductTable({
     return category?.name || 'Unknown';
   };
 
-  // Format price
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(price);
   };
 
