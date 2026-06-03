@@ -19,6 +19,7 @@ import ReferralDashboard from './pages/ReferralDashboard';
 import LevelRewards from './pages/LevelRewards';
 import FastPayOrders from './pages/FastPayOrders';
 import { Members } from './pages/Members';
+import Media from './pages/Media';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
@@ -92,6 +93,15 @@ function App() {
                       />
                       
                       <Route path="/categories" element={<Categories />} />
+                      
+                      <Route
+                        path="/media"
+                        element={
+                          <ProtectedRoute requirePermission="can_edit_products">
+                            <Media />
+                          </ProtectedRoute>
+                        }
+                      />
                       
                       <Route
                         path="/news"

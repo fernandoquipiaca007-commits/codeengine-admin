@@ -50,6 +50,17 @@ const links: SidebarLink[] = [
     ),
   },
   {
+    name: 'Mídia / Vídeos',
+    path: '/media',
+    permission: 'can_edit_products',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 2.25-4.5 2.25v-4.5z" />
+      </svg>
+    ),
+  },
+  {
     name: 'Notificações',
     path: '/push',
     permission: 'can_edit_products',
