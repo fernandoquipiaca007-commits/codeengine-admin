@@ -2,10 +2,6 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key-to-prevent-startup-crash';
-const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-
-// Force Vite to recompile this file and read the new .env.local variables
-console.log('[supabase] Init clients with service key length:', supabaseServiceRoleKey ? supabaseServiceRoleKey.length : 0);
 
 if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
   console.warn(
@@ -13,19 +9,6 @@ if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KE
     'The admin panel will load but database operations will fail until these are configured in Vercel settings.'
   );
 }
-
-if (!supabaseServiceRoleKey) {
-  console.warn(
-    '[supabase] VITE_SUPABASE_SERVICE_ROLE_KEY missing — admin data ops use anon client with user session'
-  );
-}
-
-/** Isolated storage so service-role client never reads/writes auth tokens */
-const noopAuthStorage = {
-  getItem: () => null,
-  setItem: () => {},
-  removeItem: () => {},
-};
 
 const authClientOptions = {
   auth: {
@@ -55,28 +38,13 @@ export function getAuthClient(): SupabaseClient {
 }
 
 /**
- * Singleton for database/storage operations (service role when available).
- * Never use .auth on this client.
+ * Singleton for database/storage operations.
+ * Enforces Row Level Security (RLS) by using the anon client with the user's session.
  */
 export function getDataClient(): SupabaseClient {
   if (!dataClientInstance) {
-    if (supabaseServiceRoleKey) {
-      dataClientInstance = createClient(supabaseUrl, supabaseServiceRoleKey, {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-          storage: noopAuthStorage,
-          storageKey: 'codeengine-admin-service-inert',
-        },
-        global: {
-          headers: {
-            'x-client-info': 'codeengine-admin-data',
-          },
-        },
-      });
-    } else {
-      dataClientInstance = getAuthClient();
-    }
+    // Always use the authenticated anon client to respect RLS
+    dataClientInstance = getAuthClient();
   }
   return dataClientInstance;
 }
@@ -135,12 +103,12 @@ export async function checkConnection(): Promise<boolean> {
 }
 
 export function handleSupabaseError(error: unknown, context: string): never {
-  const message =
-    error && typeof error === 'object' && 'message' in error
-      ? String((error as { message: string }).message)
-      : 'Unknown error';
+  // Log full error details for internal auditing and debugging
   console.error(`[supabase] ${context}:`, error);
-  throw new Error(`${context}: ${message}`);
+
+  // Throw a sanitized message to avoid leaking technical details to the UI
+  // The full technical error is still available in the console/logs
+  throw new Error(`Operação falhou: ${context}. Por favor, tente novamente.`);
 }
 
 export type { SupabaseClient };
