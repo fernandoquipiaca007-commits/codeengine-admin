@@ -215,6 +215,7 @@ export function VideoManager({ productId }: VideoManagerProps) {
                 <option value="youtube">YouTube</option>
                 <option value="vimeo">Vimeo</option>
                 <option value="instagram">Instagram</option>
+                <option value="upload">Direto (Supabase / Link de Vídeo)</option>
               </select>
             </div>
           )}
@@ -250,7 +251,15 @@ export function VideoManager({ productId }: VideoManagerProps) {
                 type="text"
                 value={newVideo.video_url}
                 onChange={(e) => setNewVideo({ ...newVideo, video_url: e.target.value })}
-                placeholder="https://youtube.com/watch?v=..."
+                placeholder={
+                  newVideo.video_type === 'youtube'
+                    ? 'https://youtube.com/watch?v=...'
+                    : newVideo.video_type === 'vimeo'
+                    ? 'https://vimeo.com/...'
+                    : newVideo.video_type === 'instagram'
+                    ? 'https://instagram.com/p/...'
+                    : 'https://[supabase-url]/storage/v1/object/public/product-videos/...'
+                }
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg"
               />
             </div>
@@ -311,7 +320,7 @@ export function VideoManager({ productId }: VideoManagerProps) {
                   </h4>
                   <p className="text-sm text-gray-600 mt-1">{video.video_url}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    Tipo: {video.video_type}
+                    Tipo: {video.video_type === 'upload' ? 'Direto (Supabase / Link de Vídeo)' : video.video_type}
                   </p>
 
                   <div className="flex items-center gap-4 mt-3">
