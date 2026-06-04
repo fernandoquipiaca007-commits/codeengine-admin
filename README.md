@@ -38,7 +38,6 @@ npm install
 ```env
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_anon_key
-VITE_SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 VITE_APP_URL=http://localhost:5174
 ```
 
@@ -99,7 +98,6 @@ admin/
 |----------|-------------|
 | `VITE_SUPABASE_URL` | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key (for RLS operations) |
-| `VITE_SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (for admin operations) |
 | `VITE_APP_URL` | Admin dashboard URL |
 
 ## Storage Buckets
@@ -114,7 +112,7 @@ The admin dashboard uses the following Supabase Storage buckets:
 ## Security
 
 - Uses Supabase Row Level Security (RLS) for data access control
-- Service role key should only be used in secure admin contexts
+- All data operations are performed via an authenticated client with Row Level Security (RLS)
 - Never expose service role key in client-side code
 - All file uploads are validated for type and size
 
