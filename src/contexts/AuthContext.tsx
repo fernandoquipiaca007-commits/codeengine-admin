@@ -63,8 +63,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('auth_user_id', authUserId)
         .eq('active', true)
         .single();
-      
-      console.log('[auth] fetch result:', { data, error });
 
       if (error) {
         console.error('[auth] Error loading admin user:', error);
