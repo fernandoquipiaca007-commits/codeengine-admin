@@ -2,10 +2,6 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key-to-prevent-startup-crash';
-const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-
-// Force Vite to recompile this file and read the new .env.local variables
-console.log('[supabase] Init clients with service key length:', supabaseServiceRoleKey ? supabaseServiceRoleKey.length : 0);
 
 if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
   console.warn(
@@ -13,19 +9,6 @@ if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KE
     'The admin panel will load but database operations will fail until these are configured in Vercel settings.'
   );
 }
-
-if (!supabaseServiceRoleKey) {
-  console.warn(
-    '[supabase] VITE_SUPABASE_SERVICE_ROLE_KEY missing — admin data ops use anon client with user session'
-  );
-}
-
-/** Isolated storage so service-role client never reads/writes auth tokens */
-const noopAuthStorage = {
-  getItem: () => null,
-  setItem: () => {},
-  removeItem: () => {},
-};
 
 const authClientOptions = {
   auth: {
@@ -55,28 +38,12 @@ export function getAuthClient(): SupabaseClient {
 }
 
 /**
- * Singleton for database/storage operations (service role when available).
- * Never use .auth on this client.
+ * Singleton for database/storage operations.
+ * Always returns the auth client to enforce RLS and session-based access.
  */
 export function getDataClient(): SupabaseClient {
   if (!dataClientInstance) {
-    if (supabaseServiceRoleKey) {
-      dataClientInstance = createClient(supabaseUrl, supabaseServiceRoleKey, {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-          storage: noopAuthStorage,
-          storageKey: 'codeengine-admin-service-inert',
-        },
-        global: {
-          headers: {
-            'x-client-info': 'codeengine-admin-data',
-          },
-        },
-      });
-    } else {
-      dataClientInstance = getAuthClient();
-    }
+    dataClientInstance = getAuthClient();
   }
   return dataClientInstance;
 }
