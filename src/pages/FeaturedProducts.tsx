@@ -33,7 +33,7 @@ export default function FeaturedProducts() {
     custom_subtitle: '',
     custom_description: '',
     custom_cover: '',
-    custom_cta: 'Ver produto',
+    custom_cta: '',
     active: true,
   });
 
@@ -64,23 +64,14 @@ export default function FeaturedProducts() {
     }
   }
 
-  function applyProductDefaults(productId: string, keepOverrides = false) {
-    const product = products.find((p) => p.id === productId);
-    if (!product) return;
-
-    const firstTag = product.tags?.[0]?.toUpperCase() ?? 'PRODUTO';
-
+  function resetToDefaults() {
     setForm((prev) => ({
       ...prev,
-      product_id: productId,
-      custom_title: keepOverrides && prev.custom_title ? prev.custom_title : product.title,
-      custom_subtitle: keepOverrides && prev.custom_subtitle ? prev.custom_subtitle : firstTag,
-      custom_description:
-        keepOverrides && prev.custom_description
-          ? prev.custom_description
-          : shortDescription(product.description),
-      custom_cover: product.cover_url || '',
-      custom_cta: keepOverrides && prev.custom_cta ? prev.custom_cta : product.cta_text || 'Ver produto',
+      custom_title: '',
+      custom_subtitle: '',
+      custom_description: '',
+      custom_cover: '',
+      custom_cta: '',
     }));
     setCoverFile(undefined);
   }
@@ -105,11 +96,11 @@ export default function FeaturedProducts() {
       setForm({
         product_id: first.id,
         order_position: vacantPosition,
-        custom_title: first.title,
-        custom_subtitle: first.tags?.[0]?.toUpperCase() ?? 'PRODUTO',
-        custom_description: shortDescription(first.description),
-        custom_cover: first.cover_url || '',
-        custom_cta: first.cta_text || 'Ver produto',
+        custom_title: '',
+        custom_subtitle: '',
+        custom_description: '',
+        custom_cover: '',
+        custom_cta: '',
         active: true,
       });
     } else {
@@ -120,7 +111,7 @@ export default function FeaturedProducts() {
         custom_subtitle: '',
         custom_description: '',
         custom_cover: '',
-        custom_cta: 'Ver produto',
+        custom_cta: '',
         active: true,
       });
     }
@@ -133,22 +124,31 @@ export default function FeaturedProducts() {
     setForm({
       product_id: row.product_id,
       order_position: row.order_position,
-      custom_title: row.custom_title || row.products?.title || '',
+      custom_title: row.custom_title || '',
       custom_subtitle: row.custom_subtitle || '',
       custom_description: row.custom_description || '',
-      custom_cover: row.custom_cover || row.products?.cover_url || '',
-      custom_cta: row.custom_cta || 'Ver produto',
+      custom_cover: row.custom_cover || '',
+      custom_cta: row.custom_cta || '',
       active: row.active,
     });
   }
 
   function handleProductChange(productId: string) {
-    applyProductDefaults(productId, false);
+    setForm((prev) => ({
+      ...prev,
+      product_id: productId,
+      custom_title: '',
+      custom_subtitle: '',
+      custom_description: '',
+      custom_cover: '',
+      custom_cta: '',
+    }));
+    setCoverFile(undefined);
   }
 
   function handleUseOriginalCover() {
     if (selectedProduct?.cover_url) {
-      setForm((prev) => ({ ...prev, custom_cover: selectedProduct.cover_url }));
+      setForm((prev) => ({ ...prev, custom_cover: '' }));
       setCoverFile(undefined);
     }
   }
@@ -170,13 +170,23 @@ export default function FeaturedProducts() {
 
       if (coverFile) {
         coverUrl = await uploadFeaturedCover(form.product_id, coverFile);
-      } else if (!coverUrl && selectedProduct?.cover_url) {
-        coverUrl = selectedProduct.cover_url;
+      } else if (coverUrl === selectedProduct?.cover_url || !coverUrl) {
+        coverUrl = '';
       }
+
+      // Check if values match product defaults or are empty, and normalize them to empty strings (which become null)
+      const payloadTitle = form.custom_title.trim() === selectedProduct?.title ? '' : form.custom_title.trim();
+      const payloadSubtitle = form.custom_subtitle.trim() === (selectedProduct?.tags?.[0]?.toUpperCase() ?? 'PRODUTO') ? '' : form.custom_subtitle.trim();
+      const payloadDescription = form.custom_description.trim() === shortDescription(selectedProduct?.description || '') ? '' : form.custom_description.trim();
+      const payloadCta = form.custom_cta.trim() === (selectedProduct?.cta_text || 'Ver produto') ? '' : form.custom_cta.trim();
 
       const { error } = await upsertFeaturedProduct({
         id: editing?.id,
         ...form,
+        custom_title: payloadTitle,
+        custom_subtitle: payloadSubtitle,
+        custom_description: payloadDescription,
+        custom_cta: payloadCta,
         custom_cover: coverUrl || undefined,
       }) as any;
       if (error) throw error;
@@ -317,7 +327,7 @@ export default function FeaturedProducts() {
           )}
 
           <FeaturedCoverUpload
-            coverUrl={form.custom_cover}
+            coverUrl={form.custom_cover || selectedProduct?.cover_url || ''}
             productTitle={selectedProduct?.title}
             onFileSelect={setCoverFile}
             onUseOriginal={handleUseOriginalCover}
@@ -349,38 +359,42 @@ export default function FeaturedProducts() {
           </div>
 
           <label className="block text-sm">
-            <span className="text-gray-700">Título (editável)</span>
+            <span className="text-gray-700 font-medium">Título (deixe em branco para usar o padrão traduzido)</span>
             <input
-              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 font-normal"
               value={form.custom_title}
+              placeholder={selectedProduct?.title || 'Título do produto'}
               onChange={(e) => setForm({ ...form, custom_title: e.target.value })}
             />
           </label>
 
           <label className="block text-sm">
-            <span className="text-gray-700">Badge / subtítulo</span>
+            <span className="text-gray-700 font-medium">Badge / subtítulo (deixe em branco para usar o padrão)</span>
             <input
-              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 font-normal"
               value={form.custom_subtitle}
+              placeholder={selectedProduct?.tags?.[0]?.toUpperCase() ?? 'PRODUTO'}
               onChange={(e) => setForm({ ...form, custom_subtitle: e.target.value })}
             />
           </label>
 
           <label className="block text-sm">
-            <span className="text-gray-700">Descrição curta</span>
+            <span className="text-gray-700 font-medium">Descrição curta (deixe em branco para usar o padrão traduzido)</span>
             <textarea
-              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 font-normal"
               rows={2}
               value={form.custom_description}
+              placeholder={selectedProduct ? shortDescription(selectedProduct.description) : 'Descrição curta'}
               onChange={(e) => setForm({ ...form, custom_description: e.target.value })}
             />
           </label>
 
           <label className="block text-sm">
-            <span className="text-gray-700">Texto do botão (CTA)</span>
+            <span className="text-gray-700 font-medium">Texto do botão (CTA - deixe em branco para usar o padrão traduzido)</span>
             <input
-              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 font-normal"
               value={form.custom_cta}
+              placeholder={selectedProduct?.cta_text || 'Ver produto'}
               onChange={(e) => setForm({ ...form, custom_cta: e.target.value })}
             />
           </label>
@@ -407,7 +421,7 @@ export default function FeaturedProducts() {
             {selectedProduct && (
               <button
                 type="button"
-                onClick={() => applyProductDefaults(form.product_id, false)}
+                onClick={resetToDefaults}
                 className="px-4 py-2 text-sm text-indigo-600 hover:underline"
               >
                 Repor dados do produto

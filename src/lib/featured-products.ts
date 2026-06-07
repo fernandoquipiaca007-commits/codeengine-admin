@@ -46,7 +46,7 @@ export async function upsertFeaturedProduct(input: FeaturedProductInput & { id?:
       custom_subtitle: input.custom_subtitle || null,
       custom_description: input.custom_description || null,
       custom_cover: input.custom_cover || null,
-      custom_cta: input.custom_cta || 'Ver produto',
+      custom_cta: input.custom_cta || null,
       active: input.active ?? true,
     };
 
