@@ -133,16 +133,20 @@ export async function createProduct(formData: ProductFormData): Promise<CreatePr
 
     if (formData.translations && data?.id) {
       const translations = { ...formData.translations };
-      if (!translations.pt) {
-        translations.pt = {
-          title: formData.title,
-          description: formData.description,
-          cta_text: formData.cta_text,
-          cover_url: generatePublicUrl(STORAGE_BUCKETS.PRODUCT_COVERS.name, coverStoragePath),
-          preview_url: previewStoragePath ? generatePublicUrl(STORAGE_BUCKETS.PRODUCT_PREVIEWS.name, previewStoragePath) : undefined,
-          storage_url: fileStoragePath,
-        };
-      }
+      
+      const ptCoverUrl = coverStoragePath ? (coverStoragePath.startsWith('http') ? coverStoragePath : generatePublicUrl(STORAGE_BUCKETS.PRODUCT_COVERS.name, coverStoragePath)) : null;
+      const ptPreviewUrl = previewStoragePath ? (previewStoragePath.startsWith('http') ? previewStoragePath : generatePublicUrl(STORAGE_BUCKETS.PRODUCT_PREVIEWS.name, previewStoragePath)) : null;
+      const ptStorageUrl = fileStoragePath;
+
+      translations.pt = {
+        title: formData.title,
+        description: formData.description,
+        cta_text: formData.cta_text,
+        cover_url: ptCoverUrl || undefined,
+        preview_url: ptPreviewUrl || undefined,
+        storage_url: ptStorageUrl || undefined,
+      };
+      
       await upsertProductTranslations(data.id, translations);
     }
 
@@ -284,7 +288,22 @@ export async function updateProduct(
     }
 
     if (formData.translations && data?.id) {
-      await upsertProductTranslations(data.id, formData.translations);
+      const translations = { ...formData.translations };
+      
+      const ptCoverUrl = coverStoragePath ? (coverStoragePath.startsWith('http') ? coverStoragePath : generatePublicUrl(STORAGE_BUCKETS.PRODUCT_COVERS.name, coverStoragePath)) : null;
+      const ptPreviewUrl = previewStoragePath ? (previewStoragePath.startsWith('http') ? previewStoragePath : generatePublicUrl(STORAGE_BUCKETS.PRODUCT_PREVIEWS.name, previewStoragePath)) : null;
+      const ptStorageUrl = fileStoragePath;
+
+      translations.pt = {
+        title: formData.title,
+        description: formData.description,
+        cta_text: formData.cta_text,
+        cover_url: ptCoverUrl || undefined,
+        preview_url: ptPreviewUrl || undefined,
+        storage_url: ptStorageUrl || undefined,
+      };
+
+      await upsertProductTranslations(data.id, translations);
     }
 
     return { success: true, product: data };
