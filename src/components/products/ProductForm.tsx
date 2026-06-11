@@ -68,7 +68,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     use_shared_content: (product as any)?.use_shared_content ?? false,
     aoa_price: (product as any)?.aoa_price || 0,
     subcategory_id: (product as any)?.subcategory_id || '',
-    enabledLanguages: ['pt'] as AppLocale[],
+    enabledLanguages: ['pt', 'en', 'fr'] as AppLocale[],
     cover_url: product?.cover_url || '',
     preview_url: product?.preview_url || '',
     storage_url: product?.storage_url || '',
@@ -78,6 +78,16 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
         title: product?.title || '',
         description: product?.description || '',
         cta_text: product?.cta_text || 'Comprar Agora',
+      },
+      en: {
+        title: '',
+        description: '',
+        cta_text: 'Get Instant Access',
+      },
+      fr: {
+        title: '',
+        description: '',
+        cta_text: 'Obtenir un Accès Immédiat',
       },
     },
   });
