@@ -48,6 +48,15 @@ export default function Coupons() {
     void loadCoupons();
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'create') {
+      setShowForm(true);
+      const newUrl = window.location.origin + window.location.pathname + window.location.hash;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
   async function loadCoupons() {
     setLoading(true);
     try {
