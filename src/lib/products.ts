@@ -36,32 +36,40 @@ export async function createProduct(formData: ProductFormData): Promise<CreatePr
     // Generate a temporary product ID for file organization
     const tempProductId = crypto.randomUUID();
 
-    // Upload cover image (required)
-    if (!formData.cover_file) {
+        // Upload cover image (required)
+    let coverStoragePath = formData.cover_url ? extractStoragePathFromUrl(formData.cover_url, STORAGE_BUCKETS.PRODUCT_COVERS.name) || formData.cover_url : null;
+
+    if (formData.cover_file) {
+      const coverPath = generateProductFilePath(tempProductId, formData.cover_file.name);
+      coverStoragePath = await uploadFile(
+        STORAGE_BUCKETS.PRODUCT_COVERS.name,
+        coverPath,
+        formData.cover_file
+      );
+    }
+
+    if (!coverStoragePath) {
       return { success: false, error: 'Cover image is required' };
     }
 
-    const coverPath = generateProductFilePath(tempProductId, formData.cover_file.name);
-    const coverStoragePath = await uploadFile(
-      STORAGE_BUCKETS.PRODUCT_COVERS.name,
-      coverPath,
-      formData.cover_file
-    );
-
     // Upload digital product file (required)
-    if (!formData.product_file) {
+    let fileStoragePath = formData.storage_url ? extractStoragePathFromUrl(formData.storage_url, STORAGE_BUCKETS.EBOOKS_PRIVATE.name) || formData.storage_url : null;
+
+    if (formData.product_file) {
+      const productPath = generateProductFilePath(tempProductId, formData.product_file.name);
+      fileStoragePath = await uploadFile(
+        STORAGE_BUCKETS.EBOOKS_PRIVATE.name,
+        productPath,
+        formData.product_file
+      );
+    }
+
+    if (!fileStoragePath) {
       return { success: false, error: 'Digital product file is required' };
     }
 
-    const productPath = generateProductFilePath(tempProductId, formData.product_file.name);
-    const fileStoragePath = await uploadFile(
-      STORAGE_BUCKETS.EBOOKS_PRIVATE.name,
-      productPath,
-      formData.product_file
-    );
-
     // Upload preview file (optional)
-    let previewStoragePath: string | null = null;
+    let previewStoragePath: string | null = formData.preview_url ? extractStoragePathFromUrl(formData.preview_url, STORAGE_BUCKETS.PRODUCT_PREVIEWS.name) || formData.preview_url : null;
     if (formData.preview_file) {
       const previewPath = generateProductFilePath(tempProductId, formData.preview_file.name);
       previewStoragePath = await uploadFile(
@@ -72,7 +80,7 @@ export async function createProduct(formData: ProductFormData): Promise<CreatePr
     }
 
     // Upload video file (optional)
-    let videoStoragePath: string | null = null;
+    let videoStoragePath: string | null = formData.video_url ? extractStoragePathFromUrl(formData.video_url, STORAGE_BUCKETS.PRODUCT_VIDEOS.name) || formData.video_url : null;
     if (formData.video_file) {
       const videoPath = generateProductFilePath(tempProductId, formData.video_file.name);
       videoStoragePath = await uploadFile(
@@ -174,10 +182,33 @@ export async function updateProduct(
       return { success: false, error: 'Sessão expirada. Reconecte sem sair da página.' };
     }
 
-    let coverStoragePath = formData.cover_url ? (existingProduct.cover_storage_path || existingProduct.cover_url) : null;
-    let previewStoragePath = formData.preview_url ? (existingProduct.preview_storage_path || existingProduct.preview_url) : null;
-    let videoStoragePath = formData.video_url ? (existingProduct.video_storage_path || existingProduct.video_url) : null;
-    let fileStoragePath = formData.storage_url ? (existingProduct.file_storage_path || existingProduct.storage_url) : null;
+    let coverStoragePath: string | null | undefined = formData.cover_url;
+    if (formData.cover_url === existingProduct.cover_url || formData.cover_url === existingProduct.cover_storage_path) {
+      coverStoragePath = existingProduct.cover_storage_path || existingProduct.cover_url;
+    } else if (formData.cover_url) {
+      coverStoragePath = extractStoragePathFromUrl(formData.cover_url, STORAGE_BUCKETS.PRODUCT_COVERS.name) || formData.cover_url;
+    }
+
+    let previewStoragePath: string | null | undefined = formData.preview_url;
+    if (formData.preview_url === existingProduct.preview_url || formData.preview_url === existingProduct.preview_storage_path) {
+      previewStoragePath = existingProduct.preview_storage_path || existingProduct.preview_url;
+    } else if (formData.preview_url) {
+      previewStoragePath = extractStoragePathFromUrl(formData.preview_url, STORAGE_BUCKETS.PRODUCT_PREVIEWS.name) || formData.preview_url;
+    }
+
+    let videoStoragePath: string | null | undefined = formData.video_url;
+    if (formData.video_url === existingProduct.video_url || formData.video_url === existingProduct.video_storage_path) {
+      videoStoragePath = existingProduct.video_storage_path || existingProduct.video_url;
+    } else if (formData.video_url) {
+      videoStoragePath = extractStoragePathFromUrl(formData.video_url, STORAGE_BUCKETS.PRODUCT_VIDEOS.name) || formData.video_url;
+    }
+
+    let fileStoragePath: string | null | undefined = formData.storage_url;
+    if (formData.storage_url === existingProduct.storage_url || formData.storage_url === existingProduct.file_storage_path) {
+      fileStoragePath = existingProduct.file_storage_path || existingProduct.storage_url;
+    } else if (formData.storage_url) {
+      fileStoragePath = extractStoragePathFromUrl(formData.storage_url, STORAGE_BUCKETS.EBOOKS_PRIVATE.name) || formData.storage_url;
+    }
 
     // Upload new cover if provided
     if (formData.cover_file) {

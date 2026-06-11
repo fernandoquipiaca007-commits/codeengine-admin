@@ -203,14 +203,14 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
       }
     }
 
-    if (!product && !formData.cover_file) {
+    if (!product && !formData.cover_file && !formData.cover_url) {
       newErrors.cover_file = 'Imagem de capa é obrigatória';
     }
-
-    if (!product && !formData.product_file) {
+ 
+    if (!product && !formData.product_file && !formData.storage_url) {
       newErrors.product_file = 'Arquivo do produto digital é obrigatório';
     }
-
+ 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -710,6 +710,27 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               maxSize={5 * 1024 * 1024}
               required={!product && activeLang === 'pt'}
               currentFile={(activeLang === 'pt' ? formData.cover_url : formData.translations[activeLang]?.cover_url) || undefined}
+              bucketName="product-covers"
+              onUrlUpload={(url, _path) => {
+                if (activeLang === 'pt') {
+                  setFormData({ ...formData, cover_url: url, cover_file: undefined });
+                } else {
+                  setFormData(prev => ({
+                    ...prev,
+                    translations: {
+                      ...prev.translations,
+                      [activeLang]: {
+                        ...prev.translations[activeLang],
+                        title: prev.translations[activeLang]?.title || '',
+                        description: prev.translations[activeLang]?.description || '',
+                        cta_text: prev.translations[activeLang]?.cta_text || '',
+                        cover_url: url,
+                        cover_file: undefined
+                      }
+                    }
+                  }));
+                }
+              }}
               onFileSelect={(file) => {
                 if (activeLang === 'pt') {
                   setFormData({ ...formData, cover_file: file });
@@ -746,7 +767,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               helpText="Max 5MB • JPG, PNG, WebP"
             />
           )}
-
+ 
           {/* Preview File */}
           {(!formData.use_shared_content || activeLang === 'pt') && (
             <CompactFileUpload
@@ -754,6 +775,27 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
               maxSize={10 * 1024 * 1024}
               currentFile={(activeLang === 'pt' ? formData.preview_url : formData.translations[activeLang]?.preview_url) || undefined}
+              bucketName="product-previews"
+              onUrlUpload={(url, _path) => {
+                if (activeLang === 'pt') {
+                  setFormData({ ...formData, preview_url: url, preview_file: undefined });
+                } else {
+                  setFormData(prev => ({
+                    ...prev,
+                    translations: {
+                      ...prev.translations,
+                      [activeLang]: {
+                        ...prev.translations[activeLang],
+                        title: prev.translations[activeLang]?.title || '',
+                        description: prev.translations[activeLang]?.description || '',
+                        cta_text: prev.translations[activeLang]?.cta_text || '',
+                        preview_url: url,
+                        preview_file: undefined
+                      }
+                    }
+                  }));
+                }
+              }}
               onFileSelect={(file) => {
                 if (activeLang === 'pt') {
                   setFormData({ ...formData, preview_file: file });
@@ -790,7 +832,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               helpText="Max 10MB • JPG, PNG, PDF"
             />
           )}
-
+ 
           {/* Video File - Always shared right now based on logic, but let's keep it under PT */}
           {activeLang === 'pt' && (
             <CompactFileUpload
@@ -798,6 +840,8 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               accept="video/mp4,video/webm,video/ogg,.mp4,.webm,.ogg"
               maxSize={100 * 1024 * 1024}
               currentFile={formData.video_url || undefined}
+              bucketName="product-videos"
+              onUrlUpload={(url, _path) => setFormData({ ...formData, video_url: url, video_file: undefined })}
               onFileSelect={(file) => setFormData({ ...formData, video_file: file })}
               onClearCurrent={() => {
                 setFormData({ ...formData, video_url: '', video_file: undefined });
@@ -805,7 +849,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               helpText="Max 100MB • MP4, WebM, OGG (Partilhado por todos idiomas)"
             />
           )}
-
+ 
           {/* Digital Product File */}
           {(!formData.use_shared_content || activeLang === 'pt') && (
             <CompactFileUpload
@@ -814,6 +858,27 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               maxSize={2 * 1024 * 1024 * 1024}
               required={!product && activeLang === 'pt'}
               currentFile={(activeLang === 'pt' ? formData.storage_url : formData.translations[activeLang]?.storage_url) || undefined}
+              bucketName="ebooks-private"
+              onUrlUpload={(_url, path) => {
+                if (activeLang === 'pt') {
+                  setFormData({ ...formData, storage_url: path, product_file: undefined });
+                } else {
+                  setFormData(prev => ({
+                    ...prev,
+                    translations: {
+                      ...prev.translations,
+                      [activeLang]: {
+                        ...prev.translations[activeLang],
+                        title: prev.translations[activeLang]?.title || '',
+                        description: prev.translations[activeLang]?.description || '',
+                        cta_text: prev.translations[activeLang]?.cta_text || 'Comprar Agora',
+                        storage_url: path,
+                        product_file: undefined
+                      }
+                    }
+                  }));
+                }
+              }}
               onFileSelect={(file) => {
                 if (activeLang === 'pt') {
                   setFormData({ ...formData, product_file: file });

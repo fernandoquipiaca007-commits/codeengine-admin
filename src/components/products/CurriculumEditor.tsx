@@ -105,6 +105,54 @@ export function CurriculumEditor({ productId, onChange }: CurriculumEditorProps)
     }
   }
 
+  async function handleLessonLocalPath(lessonId: string, filePath: string) {
+    setSaving(true);
+    setUploadError(null);
+    try {
+      const lesson = lessons.find((l) => l.id === lessonId);
+      if (!lesson) return;
+      const lessonType = lesson.lesson_type || 'video';
+
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3041';
+      const adminApiKey = import.meta.env.VITE_ADMIN_API_KEY || '';
+
+      const response = await fetch(`${BACKEND_URL}/api/admin/upload-local-file`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': adminApiKey,
+        },
+        body: JSON.stringify({
+          filePath: filePath,
+          bucketName: 'ebooks-private',
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Falha ao fazer upload do ficheiro local');
+      }
+
+      const updatedLesson = {
+        ...lesson,
+        video_storage_path: lessonType === 'video' ? result.path : lesson.video_storage_path,
+        audio_storage_path: lessonType === 'audio' ? result.path : lesson.audio_storage_path,
+        video_duration_seconds: 0,
+      };
+
+      const updated = await saveLesson(productId, updatedLesson);
+      const list = lessons.map((l) => (l.id === lessonId ? updated : l));
+      setLessons(list);
+      onChange?.(list);
+    } catch (err: any) {
+      const message = err instanceof Error ? err.message : 'Falha ao enviar o ficheiro local da aula.';
+      setUploadError(message);
+      console.error('Lesson local upload error:', err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function moveLesson(lessonId: string, direction: 'up' | 'down') {
     const sorted = [...lessons].sort((a, b) => a.display_order - b.display_order);
     const idx = sorted.findIndex((l) => l.id === lessonId);
@@ -201,7 +249,7 @@ export function CurriculumEditor({ productId, onChange }: CurriculumEditorProps)
 
             {/* Media Upload / URL based on type */}
             {lessonType === 'video' && (
-              <div>
+              <div className="space-y-2">
                 <input
                   type="file"
                   accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
@@ -212,14 +260,40 @@ export function CurriculumEditor({ productId, onChange }: CurriculumEditorProps)
                   }}
                   className="text-sm"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    placeholder="Ou caminho do vídeo local / URL (agentes)"
+                    id={`local-video-${lesson.id}`}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = e.currentTarget.value.trim();
+                        if (val) void handleLessonLocalPath(lesson.id, val);
+                      }
+                    }}
+                    className="flex-1 text-xs border border-gray-300 rounded-md px-2 py-1 bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById(`local-video-${lesson.id}`) as HTMLInputElement;
+                      if (input?.value.trim()) void handleLessonLocalPath(lesson.id, input.value.trim());
+                    }}
+                    disabled={saving}
+                    className="text-xs px-2.5 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Carregar
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500">
                   MP4/WebM/MOV até 2GB (bucket ebooks-private).
                 </p>
               </div>
             )}
-
+ 
             {lessonType === 'audio' && (
-              <div>
+              <div className="space-y-2">
                 <input
                   type="file"
                   accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav,.mp3,.ogg,.wav,.m4a"
@@ -230,7 +304,33 @@ export function CurriculumEditor({ productId, onChange }: CurriculumEditorProps)
                   }}
                   className="text-sm"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    placeholder="Ou caminho do áudio local / URL (agentes)"
+                    id={`local-audio-${lesson.id}`}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = e.currentTarget.value.trim();
+                        if (val) void handleLessonLocalPath(lesson.id, val);
+                      }
+                    }}
+                    className="flex-1 text-xs border border-gray-300 rounded-md px-2 py-1 bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById(`local-audio-${lesson.id}`) as HTMLInputElement;
+                      if (input?.value.trim()) void handleLessonLocalPath(lesson.id, input.value.trim());
+                    }}
+                    disabled={saving}
+                    className="text-xs px-2.5 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Carregar
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500">
                   MP3/OGG/WAV até 500MB.
                 </p>
               </div>

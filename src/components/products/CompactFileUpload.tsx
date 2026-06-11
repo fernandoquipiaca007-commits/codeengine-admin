@@ -22,6 +22,8 @@ interface CompactFileUploadProps {
   onFileSelect: (file: File | undefined) => void;
   onClearCurrent?: () => void;
   helpText?: string;
+  bucketName: string;
+  onUrlUpload?: (url: string, path: string) => void;
 }
 
 export function CompactFileUpload({
@@ -33,8 +35,13 @@ export function CompactFileUpload({
   onFileSelect,
   onClearCurrent,
   helpText,
+  bucketName,
+  onUrlUpload,
 }: CompactFileUploadProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedFileInfo, setUploadedFileInfo] = useState<{ name: string; size: number } | null>(null);
+  const [localPath, setLocalPath] = useState('');
+  const [uploadingLocal, setUploadingLocal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +88,8 @@ export function CompactFileUpload({
 
     setError(null);
     setSelectedFile(file);
+    setUploadedFileInfo(null); // Clear local uploaded info
+    setLocalPath('');
     onFileSelect(file);
   }
 
@@ -111,10 +120,59 @@ export function CompactFileUpload({
     }
   }
 
+  async function handleLocalUpload() {
+    if (!localPath.trim()) return;
+ 
+    setUploadingLocal(true);
+    setError(null);
+
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3041';
+      const adminApiKey = import.meta.env.VITE_ADMIN_API_KEY || '';
+
+      const response = await fetch(`${BACKEND_URL}/api/admin/upload-local-file`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': adminApiKey,
+        },
+        body: JSON.stringify({
+          filePath: localPath.trim(),
+          bucketName: bucketName,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Erro ao carregar ficheiro local');
+      }
+
+      setUploadedFileInfo({
+        name: result.fileName,
+        size: result.fileSize || 0,
+      });
+      setSelectedFile(null); // Clear standard file selection
+
+      onFileSelect(undefined); // Clear standard file in parent
+      if (onUrlUpload) {
+        onUrlUpload(result.url, result.path);
+      }
+    } catch (err: any) {
+      console.error('Local upload error:', err);
+      setError(err instanceof Error ? err.message : 'Falha no upload local');
+    } finally {
+      setUploadingLocal(false);
+    }
+  }
+
   function handleRemove() {
     setSelectedFile(null);
+    setUploadedFileInfo(null);
+    setLocalPath('');
     setError(null);
     onFileSelect(undefined);
+    if (onUrlUpload) onUrlUpload('', '');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -127,17 +185,19 @@ export function CompactFileUpload({
       </label>
 
       {/* File Display or Upload Area */}
-      {selectedFile || currentFile ? (
+      {selectedFile || uploadedFileInfo || currentFile ? (
         <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            {selectedFile ? (
+            {selectedFile || uploadedFileInfo ? (
               <>
                 <File className="w-5 h-5 text-primary-600 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    {selectedFile.name}
+                    {selectedFile ? selectedFile.name : uploadedFileInfo?.name}
                   </p>
-                  <p className="text-xs text-gray-500">{formatFileSize(selectedFile.size)}</p>
+                  <p className="text-xs text-gray-500">
+                    {formatFileSize(selectedFile ? selectedFile.size : (uploadedFileInfo?.size || 0))}
+                  </p>
                 </div>
                 <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
               </>
@@ -151,7 +211,7 @@ export function CompactFileUpload({
               </>
             )}
           </div>
-          {selectedFile ? (
+          {selectedFile || uploadedFileInfo ? (
             <button
               type="button"
               onClick={handleRemove}
@@ -200,6 +260,38 @@ export function CompactFileUpload({
             <span className="font-medium text-primary-600">Clique para escolher</span> ou arraste
             aqui
           </p>
+        </div>
+      )}
+
+      {/* Local path or URL field - only show if a new file is not yet selected/uploaded */}
+      {!(selectedFile || uploadedFileInfo) && (
+        <div className="mt-2 pt-2 border-t border-gray-100 space-y-1">
+          <label className="block text-xs font-medium text-gray-500">
+            Ou caminho do arquivo local / URL (agentes):
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Ex: C:\ebooks\livro.pdf ou https://site.com/livro.pdf"
+              value={localPath}
+              onChange={(e) => setLocalPath(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (localPath.trim() && !uploadingLocal) void handleLocalUpload();
+                }
+              }}
+              className="flex-1 min-w-0 rounded-md border-gray-300 shadow-sm text-xs focus:ring-indigo-500 focus:border-indigo-500 px-2.5 py-1.5 border"
+            />
+            <button
+              type="button"
+              onClick={handleLocalUpload}
+              disabled={uploadingLocal || !localPath.trim()}
+              className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            >
+              {uploadingLocal ? 'Enviando...' : 'Carregar'}
+            </button>
+          </div>
         </div>
       )}
 
