@@ -43,10 +43,10 @@ export default function PushNotifications() {
 
   // Tab 2: Channels Settings State
   const [settings, setSettings] = useState<SettingsState>({
-    new_product: { email_enabled: true, email_provider: 'n8n', web_push_enabled: true },
-    news: { email_enabled: true, email_provider: 'n8n', web_push_enabled: true },
-    campaign: { email_enabled: true, email_provider: 'resend', web_push_enabled: true },
-    forgot_password: { email_enabled: true, email_provider: 'n8n' }
+    new_product: { email_enabled: false, email_provider: 'n8n', web_push_enabled: true },
+    news: { email_enabled: false, email_provider: 'n8n', web_push_enabled: true },
+    campaign: { email_enabled: false, email_provider: 'n8n', web_push_enabled: true },
+    forgot_password: { email_enabled: true, email_provider: 'resend' }
   });
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
