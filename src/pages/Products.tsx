@@ -10,6 +10,30 @@ import { mapError } from '../lib/error-messages';
 
 type ViewMode = 'list' | 'create' | 'edit';
 
+const ADMIN_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+
+async function triggerProductNotification(productId: string, title: string, description: string) {
+  if (!ADMIN_KEY) {
+    console.warn('[Products] VITE_ADMIN_API_KEY not configured, skipping push notification');
+    return;
+  }
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/admin/notify-product`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify({ product_id: productId, title, description }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || `HTTP error ${res.status}`);
+    }
+    console.log('[Products] Push notification successfully triggered for product:', productId);
+  } catch (err) {
+    console.error('[Products] Failed to trigger push notification:', err);
+  }
+}
+
 export default function Products() {
   const navigate = useNavigate();
   const { notifyError, notifySuccess, showError } = useToast();
@@ -72,6 +96,10 @@ export default function Products() {
       setProducts([result.product, ...products]);
       setViewMode('list');
       notifySuccess('productPublished');
+
+      if (formData.status === 'active') {
+        void triggerProductNotification(result.product.id, formData.title, formData.description);
+      }
     } else {
       const mapped = mapError(result.error, 'save');
       showError(mapped.title, mapped.message, mapped.hint);
@@ -85,10 +113,17 @@ export default function Products() {
     const result = await updateProduct(selectedProduct.id, formData, selectedProduct);
     
     if (result.success && result.product) {
+      const wasActive = selectedProduct.status === 'active';
+      const isNowActive = formData.status === 'active';
+
       setProducts(products.map((p) => (p.id === result.product!.id ? result.product! : p)));
       setViewMode('list');
       setSelectedProduct(null);
       notifySuccess('productUpdated');
+
+      if (isNowActive && !wasActive) {
+        void triggerProductNotification(result.product.id, formData.title, formData.description);
+      }
     } else {
       const mapped = mapError(result.error, 'save');
       showError(mapped.title, mapped.message, mapped.hint);
