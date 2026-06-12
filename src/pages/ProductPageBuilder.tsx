@@ -669,6 +669,22 @@ export function ProductPageBuilder() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Observação de Compra (Alerta antes de comprar)
+                </label>
+                <textarea
+                  value={product.custom_copy?.purchase_note || ''}
+                  onChange={(e) => updateCustomCopy('purchase_note', e.target.value)}
+                  placeholder="Ex: Nota: Apesar de o documento estar traduzido para português, algumas imagens podem conter textos em inglês."
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Esta observação será exibida como um alerta destacado logo acima do botão de compra na página do produto.
+                </p>
+              </div>
             </div>
           </div>
         )}
