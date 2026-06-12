@@ -42,7 +42,9 @@ export default function ReferralDashboard() {
       const res = await fetch(`${API}/api/admin/referral/overview`, { headers });
       const data = await res.json();
       if (data.success) setOverview(data.overview);
-    } catch {}
+    } catch (err) {
+      console.error('Error fetching referral overview:', err);
+    }
   }, []);
 
   const fetchUsers = useCallback(async () => {
@@ -50,7 +52,9 @@ export default function ReferralDashboard() {
       const res = await fetch(`${API}/api/admin/referral/users?limit=50`, { headers });
       const data = await res.json();
       if (data.success) setUsers(data.users || []);
-    } catch {}
+    } catch (err) {
+      console.error('Error fetching referral users:', err);
+    }
   }, []);
 
   const fetchConversions = useCallback(async () => {
@@ -58,7 +62,9 @@ export default function ReferralDashboard() {
       const res = await fetch(`${API}/api/admin/referral/conversions?limit=100`, { headers });
       const data = await res.json();
       if (data.success) setConversions(data.conversions || []);
-    } catch {}
+    } catch (err) {
+      console.error('Error fetching referral conversions:', err);
+    }
   }, []);
 
   const fetchFraud = useCallback(async () => {
@@ -66,7 +72,9 @@ export default function ReferralDashboard() {
       const res = await fetch(`${API}/api/admin/referral/fraud-log`, { headers });
       const data = await res.json();
       if (data.success) setFraudLog(data.logs || []);
-    } catch {}
+    } catch (err) {
+      console.error('Error fetching fraud logs:', err);
+    }
   }, []);
 
   useEffect(() => {
