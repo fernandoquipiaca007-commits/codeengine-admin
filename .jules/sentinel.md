@@ -1,0 +1,4 @@
+## 2025-06-13 - Removal of Supabase Service Role Key from Frontend
+**Vulnerability:** The `VITE_SUPABASE_SERVICE_ROLE_KEY` was exposed and used in the frontend code. This key bypasses Row Level Security (RLS) and gives full administrative access to the Supabase database. Exposing it in a browser bundle allows any user to potentially steal it and perform unauthorized operations.
+**Learning:** Initial project setup often includes the service role key for convenience in admin dashboards, but this pattern is extremely insecure for client-side applications. RLS should be used to manage permissions even for admin panels.
+**Prevention:** Never include `SERVICE_ROLE` keys in frontend environment variables. Use the `ANON` key and rely on authenticated user sessions with properly configured RLS policies.
