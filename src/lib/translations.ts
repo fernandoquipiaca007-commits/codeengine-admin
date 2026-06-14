@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase-admin';
-import { uploadFile, STORAGE_BUCKETS } from './storage';
+import { uploadFile, STORAGE_BUCKETS, sanitizeFileName } from './storage';
 import { AppLocale, ProductTranslationFields } from '../types/locale';
 
 export async function upsertProductTranslations(
@@ -14,15 +14,18 @@ export async function upsertProductTranslations(
     let storageUrl = fields.storage_url;
 
     if (fields.cover_file) {
-      const path = `${productId}/${lang}/${fields.cover_file.name}`;
+      const safeName = `${Date.now()}_${sanitizeFileName(fields.cover_file.name)}`;
+      const path = `${productId}/${lang}/${safeName}`;
       coverUrl = await uploadFile(STORAGE_BUCKETS.PRODUCT_COVERS.name, path, fields.cover_file);
     }
     if (fields.preview_file) {
-      const path = `${productId}/${lang}/${fields.preview_file.name}`;
+      const safeName = `${Date.now()}_${sanitizeFileName(fields.preview_file.name)}`;
+      const path = `${productId}/${lang}/${safeName}`;
       previewUrl = await uploadFile(STORAGE_BUCKETS.PRODUCT_PREVIEWS.name, path, fields.preview_file);
     }
     if (fields.product_file) {
-      const path = `${productId}/${lang}/${fields.product_file.name}`;
+      const safeName = `${Date.now()}_${sanitizeFileName(fields.product_file.name)}`;
+      const path = `${productId}/${lang}/${safeName}`;
       storageUrl = await uploadFile(STORAGE_BUCKETS.EBOOKS_PRIVATE.name, path, fields.product_file);
     }
 

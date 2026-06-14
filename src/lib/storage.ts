@@ -264,10 +264,21 @@ export async function deleteFile(bucketName: string, filePath: string): Promise<
   }
 }
 
+// Sanitize a filename so it is safe as a Supabase Storage key.
+// 1. Normalize to NFD so accented characters are decomposed (ê → e + combining-accent).
+// 2. Strip all Unicode combining marks (the accent part).
+// 3. Replace any remaining character that is not alphanumeric, dot, or hyphen with underscore.
+export function sanitizeFileName(fileName: string): string {
+  return fileName
+    .normalize('NFD')                        // decompose accents
+    .replace(/[\u0300-\u036f]/g, '')         // strip combining diacritical marks
+    .replace(/[^a-zA-Z0-9._-]/g, '_');      // replace remaining unsafe chars
+}
+
 // Generate file path for product files
 export function generateProductFilePath(productId: string, fileName: string): string {
   const timestamp = Date.now();
-  const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const sanitizedFileName = sanitizeFileName(fileName);
   return `${productId}/${timestamp}_${sanitizedFileName}`;
 }
 
