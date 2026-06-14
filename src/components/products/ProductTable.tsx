@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import { Product, Category } from '../../types/admin';
 import StripeSync from './StripeSync';
 
+const STORE_URL = (import.meta.env.VITE_STORE_URL as string | undefined)?.replace(/\/$/, '') || 'https://codeengine.vercel.app';
+
 interface ProductTableProps {
   products: Product[];
   categories: Category[];
@@ -26,6 +28,15 @@ export default function ProductTable({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  function copyLink(productId: string) {
+    const url = `${STORE_URL}/product/${productId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(productId);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  }
 
   // Filter and search products
   const filteredProducts = useMemo(() => {
@@ -251,6 +262,17 @@ export default function ProductTable({
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => copyLink(product.id)}
+                    title={`Copiar link: ${STORE_URL}/product/${product.id}`}
+                    className={`touch-target rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                      copiedId === product.id
+                        ? 'border-green-300 bg-green-50 text-green-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-800'
+                    }`}
+                  >
+                    {copiedId === product.id ? '✓ Copiado!' : '🔗 Copiar Link'}
+                  </button>
                   <StripeSync product={product} onSyncComplete={onSyncComplete} />
                   {onCustomize && (
                     <button
@@ -358,6 +380,31 @@ export default function ProductTable({
                           <option value="archived">Arquivar</option>
                         </select>
                       )}
+                      <button
+                        onClick={() => copyLink(product.id)}
+                        title={`Copiar link da store: ${STORE_URL}/product/${product.id}`}
+                        className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded transition-colors ${
+                          copiedId === product.id
+                            ? 'text-green-700 bg-green-50'
+                            : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                        }`}
+                      >
+                        {copiedId === product.id ? (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Copiado!
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                            Link
+                          </>
+                        )}
+                      </button>
                       <StripeSync product={product} onSyncComplete={onSyncComplete} />
                       {onCustomize && (
                         <button
