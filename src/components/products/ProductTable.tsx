@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Product, Category } from '../../types/admin';
 import StripeSync from './StripeSync';
 
-const STORE_URL = (import.meta.env.VITE_STORE_URL as string | undefined)?.replace(/\/$/, '') || 'https://codeengine.vercel.app';
+const STORE_URL = (import.meta.env.VITE_STORE_URL as string | undefined)?.replace(/\/$/, '') || 'https://codeengine1.com';
 
 interface ProductTableProps {
   products: Product[];
