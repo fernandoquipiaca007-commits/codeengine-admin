@@ -4,7 +4,8 @@ import {
   Trash2 as LucideTrash2,
   Video as LucideVideoIcon,
   Upload as LucideUpload,
-  Link as LucideLinkIcon
+  Link as LucideLinkIcon,
+  Info as LucideInfo
 } from 'lucide-react';
 
 const Plus = LucidePlus as any;
@@ -12,8 +13,32 @@ const Trash2 = LucideTrash2 as any;
 const VideoIcon = LucideVideoIcon as any;
 const Upload = LucideUpload as any;
 const LinkIcon = LucideLinkIcon as any;
+const Info = LucideInfo as any;
 import { supabaseAdmin } from '../../lib/supabase-admin';
 import { uploadFile, STORAGE_BUCKETS, generateProductFilePath } from '../../lib/storage';
+
+/** Extracts the Google Drive file ID from any known GDrive URL format */
+function extractGoogleDriveId(url: string): string | null {
+  try {
+    // Format: https://drive.google.com/file/d/FILE_ID/view...
+    const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileMatch) return fileMatch[1];
+    // Format: https://drive.google.com/open?id=FILE_ID
+    const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (idMatch) return idMatch[1];
+    // Already an embed/preview URL
+    const previewMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)\/preview/);
+    if (previewMatch) return previewMatch[1];
+  } catch {}
+  return null;
+}
+
+/** Converts any Google Drive sharing URL to the embeddable preview URL */
+function toGoogleDriveEmbedUrl(url: string): string {
+  const id = extractGoogleDriveId(url);
+  if (!id) return url; // fallback: return as-is
+  return `https://drive.google.com/file/d/${id}/preview`;
+}
 
 interface Video {
   id: string;
@@ -108,17 +133,22 @@ export function VideoManager({ productId }: VideoManagerProps) {
         setUploading(false);
       }
     } else {
-      // URL mode
+        // URL mode
       if (!newVideo.video_url) {
         alert('Preencha a URL do vídeo');
         return;
       }
 
+      // Normalize Google Drive URLs to embed format before saving
+      const finalUrl = newVideo.video_type === 'google-drive'
+        ? toGoogleDriveEmbedUrl(newVideo.video_url.trim())
+        : newVideo.video_url.trim();
+
       try {
         const { error } = await supabaseAdmin.from('product_videos').insert({
           product_id: productId,
           video_type: newVideo.video_type,
-          video_url: newVideo.video_url,
+          video_url: finalUrl,
           storage_path: null,
           bucket_name: null,
           title: newVideo.title,
@@ -209,14 +239,31 @@ export function VideoManager({ productId }: VideoManagerProps) {
               </label>
               <select
                 value={newVideo.video_type}
-                onChange={(e) => setNewVideo({ ...newVideo, video_type: e.target.value })}
+                onChange={(e) => setNewVideo({ ...newVideo, video_type: e.target.value, video_url: '' })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg"
               >
                 <option value="youtube">YouTube</option>
+                <option value="google-drive">Google Drive</option>
                 <option value="vimeo">Vimeo</option>
                 <option value="instagram">Instagram</option>
                 <option value="upload">Direto (Supabase / Link de Vídeo)</option>
               </select>
+            </div>
+          )}
+
+          {/* Google Drive instructions */}
+          {uploadMode === 'url' && newVideo.video_type === 'google-drive' && (
+            <div className="flex gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+              <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+              <div className="text-blue-800">
+                <p className="font-semibold mb-1">Como partilhar um vídeo do Google Drive:</p>
+                <ol className="list-decimal list-inside space-y-0.5 text-xs">
+                  <li>Abre o Google Drive e clica com o botão direito no vídeo</li>
+                  <li>Clica em <strong>"Partilhar"</strong> → <strong>"Qualquer pessoa com o link"</strong></li>
+                  <li>Copia o link e cola aqui abaixo</li>
+                </ol>
+                <p className="mt-1 text-xs text-blue-600">O link será convertido automaticamente para o formato de incorporação.</p>
+              </div>
             </div>
           )}
 
@@ -254,6 +301,8 @@ export function VideoManager({ productId }: VideoManagerProps) {
                 placeholder={
                   newVideo.video_type === 'youtube'
                     ? 'https://youtube.com/watch?v=...'
+                    : newVideo.video_type === 'google-drive'
+                    ? 'https://drive.google.com/file/d/ID/view?usp=sharing'
                     : newVideo.video_type === 'vimeo'
                     ? 'https://vimeo.com/...'
                     : newVideo.video_type === 'instagram'
@@ -262,6 +311,15 @@ export function VideoManager({ productId }: VideoManagerProps) {
                 }
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg"
               />
+              {/* Live preview of the converted GDrive URL */}
+              {newVideo.video_type === 'google-drive' && newVideo.video_url && (
+                <p className="text-xs mt-1 text-gray-500">
+                  URL de incorporação:{' '}
+                  <span className="text-blue-600 font-mono break-all">
+                    {toGoogleDriveEmbedUrl(newVideo.video_url)}
+                  </span>
+                </p>
+              )}
             </div>
           )}
 
@@ -320,7 +378,11 @@ export function VideoManager({ productId }: VideoManagerProps) {
                   </h4>
                   <p className="text-sm text-gray-600 mt-1">{video.video_url}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    Tipo: {video.video_type === 'upload' ? 'Direto (Supabase / Link de Vídeo)' : video.video_type}
+                    Tipo: {video.video_type === 'upload'
+                      ? 'Direto (Supabase / Link de Vídeo)'
+                      : video.video_type === 'google-drive'
+                      ? 'Google Drive'
+                      : video.video_type}
                   </p>
 
                   <div className="flex items-center gap-4 mt-3">
