@@ -1,0 +1,4 @@
+## 2025-05-14 - Removed Exposed Supabase Service Role Key and Sanitized Error Handling
+**Vulnerability:** The `VITE_SUPABASE_SERVICE_ROLE_KEY` was being included in the client-side bundle via Vite environment variables and used in `src/lib/supabase-admin.ts`. Additionally, `handleSupabaseError` was leaking raw database error messages to the UI.
+**Learning:** Vite environment variables prefixed with `VITE_` are automatically bundled into the frontend. Hardcoded or environment-variable-driven admin keys are often accidentally included in client-side code when sharing logic between frontend and backend.
+**Prevention:** Never use the `VITE_` prefix for sensitive server-side keys if they are not intended for the browser. Enforce Row Level Security (RLS) on the client side by always using the anonymous key and user sessions. Sanitize error messages thrown to the UI to avoid leaking technical details about the database schema.
