@@ -45,7 +45,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const dataClient = getDataClient();
 
   async function loadAdminUser(authUserId: string, force = false) {
-    console.log('[auth] loadAdminUser called', { authUserId, force, loadingAdminRef: loadingAdminRef.current, loadedUserId: loadedUserIdRef.current });
     if (loadingAdminRef.current) return;
     if (!force && loadedUserIdRef.current === authUserId) {
       console.log('[auth] already loaded, skipping');
@@ -64,8 +63,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('active', true)
         .single();
       
-      console.log('[auth] fetch result:', { data, error });
-
       if (error) {
         console.error('[auth] Error loading admin user:', error);
         setAdminUser(null);
