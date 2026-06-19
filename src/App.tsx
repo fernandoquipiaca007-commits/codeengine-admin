@@ -20,6 +20,7 @@ import LevelRewards from './pages/LevelRewards';
 import FastPayOrders from './pages/FastPayOrders';
 import { Members } from './pages/Members';
 import Media from './pages/Media';
+import CollaboratorsAdmin from './pages/CollaboratorsAdmin';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
@@ -171,6 +172,15 @@ function App() {
                         element={
                           <ProtectedRoute requirePermission="can_access_analytics">
                             <Members />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="/collaborators"
+                        element={
+                          <ProtectedRoute requirePermission="can_access_analytics">
+                            <CollaboratorsAdmin />
                           </ProtectedRoute>
                         }
                       />
