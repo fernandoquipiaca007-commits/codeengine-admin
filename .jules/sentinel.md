@@ -1,0 +1,4 @@
+## 2025-05-14 - Removed Supabase Service Role Key and Sensitive Logs
+**Vulnerability:** The Supabase `service_role` key was being imported and potentially bundled into the frontend code via `import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY`. Additionally, sensitive authentication state and user details were being logged to the browser console.
+**Learning:** Vite environment variables prefixed with `VITE_` are automatically exposed to the client-side bundle. Using administrative keys in the frontend bypasses Row Level Security (RLS) and exposes full database access to any user. Verbose logging of auth state can lead to information leakage.
+**Prevention:** Never use the `service_role` key in frontend code. Always enforce RLS by using the `anon` key and requiring user authentication for data access. Disable or remove verbose console logs in production-ready code.
