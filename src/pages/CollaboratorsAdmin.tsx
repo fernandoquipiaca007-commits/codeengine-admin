@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabaseAdmin } from '../lib/supabase-admin';
 import { 
-  Users, FileText, Landmark, BarChart3, Database, Check, AlertTriangle, ExternalLink 
+  Users, FileText, Landmark, BarChart3, Database, Check, ExternalLink 
 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
@@ -31,7 +31,11 @@ interface PendingProduct {
   price: number;
   aoa_price: number | null;
   cover_url: string;
+  cover_storage_path?: string | null;
   storage_url: string;
+  file_storage_path?: string | null;
+  stripe_price_id?: string | null;
+  fastpay_link?: string | null;
   preview_url: string | null;
   video_url: string | null;
   licensing_info: any;
@@ -99,6 +103,7 @@ export default function CollaboratorsAdmin() {
   
   const [approveAoaModalData, setApproveAoaModalData] = useState<PendingProduct | null>(null);
   const [stripePriceId, setStripePriceId] = useState('');
+  const [fastpayLink, setFastpayLink] = useState('');
 
   const [payoutModalData, setPayoutModalData] = useState<Withdrawal | null>(null);
   const [receiptUrl, setReceiptUrl] = useState('');
@@ -211,14 +216,61 @@ export default function CollaboratorsAdmin() {
   }
 
   // Product actions
-  async function handleApproveProduct(prod: PendingProduct, forcePriceId?: string) {
-    const isAoa = prod.aoa_price && Number(prod.aoa_price) > 0;
-    
-    if (isAoa && !forcePriceId) {
-      setApproveAoaModalData(prod);
-      return;
+  async function handleDownloadFile(prod: PendingProduct) {
+    let filePath = prod.file_storage_path || prod.storage_url || '';
+    if (filePath.includes('/ebooks-private/')) {
+      filePath = filePath.substring(filePath.indexOf('/ebooks-private/') + '/ebooks-private/'.length);
     }
+    
+    try {
+      notifySuccess('Iniciando download do arquivo principal...');
+      const { data, error } = await supabaseAdmin.storage
+        .from('ebooks-private')
+        .download(filePath);
+        
+      if (error) throw error;
+      
+      const url = window.URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filePath.split('/').pop() || 'product-file';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      notifyError('Erro ao baixar arquivo: ' + err.message);
+    }
+  }
 
+  async function handleDownloadCover(prod: PendingProduct) {
+    let filePath = prod.cover_storage_path || prod.cover_url || '';
+    if (filePath.includes('/product-covers/')) {
+      filePath = filePath.substring(filePath.indexOf('/product-covers/') + '/product-covers/'.length);
+    }
+    
+    try {
+      notifySuccess('Iniciando download da capa...');
+      const { data, error } = await supabaseAdmin.storage
+        .from('product-covers')
+        .download(filePath);
+        
+      if (error) throw error;
+      
+      const url = window.URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filePath.split('/').pop() || 'product-cover';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      notifyError('Erro ao baixar capa: ' + err.message);
+    }
+  }
+
+  async function handleApproveProduct(prod: PendingProduct, forcePriceId?: string, forceFastpayLink?: string) {
     setActionLoading(`approve-prod-${prod.id}`);
     try {
       const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/products/${prod.id}/approve`, {
@@ -227,13 +279,17 @@ export default function CollaboratorsAdmin() {
           'Content-Type': 'application/json',
           'x-admin-key': ADMIN_KEY
         },
-        body: JSON.stringify({ stripePriceId: forcePriceId })
+        body: JSON.stringify({ 
+          stripePriceId: forcePriceId || stripePriceId,
+          fastpayLink: forceFastpayLink || fastpayLink
+        })
       });
       const data = await res.json();
       if (data.success) {
         notifySuccess('Produto aprovado e ativado!');
         setApproveAoaModalData(null);
         setStripePriceId('');
+        setFastpayLink('');
         void loadData();
       } else {
         throw new Error(data.error);
@@ -555,11 +611,15 @@ export default function CollaboratorsAdmin() {
                         <td className="px-6 py-4 text-right">
                           <div className="flex gap-2 justify-end">
                             <button
-                              onClick={() => handleApproveProduct(prod)}
+                              onClick={() => {
+                                setStripePriceId(prod.stripe_price_id || '');
+                                setFastpayLink(prod.fastpay_link || '');
+                                setApproveAoaModalData(prod);
+                              }}
                               disabled={actionLoading !== null}
                               className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-green-700 transition-all flex items-center gap-1 disabled:opacity-50"
                             >
-                              <Check size={14} /> Aprovar
+                              <Check size={14} /> Analisar / Aprovar
                             </button>
                             <button
                               onClick={() => setRejectModalData({ id: prod.id, type: 'product' })}
@@ -810,41 +870,136 @@ export default function CollaboratorsAdmin() {
         </div>
       )}
 
-      {/* Modal: Approve local AOA product */}
+      {/* Modal: Product Review & Approval */}
       {approveAoaModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl my-8 border border-gray-100 max-h-[90vh] overflow-y-auto">
             <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3">
-              <h3 className="text-lg font-bold text-gray-900 font-display flex items-center gap-1 text-primary">
-                <AlertTriangle size={20} /> Aprovação de Produto AOA
+              <h3 className="text-xl font-bold text-gray-900 font-display flex items-center gap-2 text-blue-600">
+                🔍 Revisão de Produto Pendente
               </h3>
-              <button onClick={() => setApproveAoaModalData(null)} className="text-gray-400 hover:text-gray-600 text-sm">Fechar</button>
+              <button 
+                onClick={() => {
+                  setApproveAoaModalData(null);
+                  setStripePriceId('');
+                  setFastpayLink('');
+                }} 
+                className="text-gray-400 hover:text-gray-600 text-sm font-semibold"
+              >
+                Fechar
+              </button>
             </div>
-            <div className="space-y-4">
-              <p className="text-xs text-gray-500">
-                Este produto tem preço configurado em Kwanza Angolano (<strong>AOA</strong>). 
-                Para que ele possa ser processado via check-out FastPay, você precisa criar/associar o ID do Preço manual correspondente.
-              </p>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Stripe Price ID manual para o gateway:</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="price_1..."
-                  value={stripePriceId}
-                  onChange={(e) => setStripePriceId(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-primary focus:outline-none"
-                />
+            
+            <div className="space-y-6">
+              {/* Product Cover and Basic Info */}
+              <div className="flex flex-col sm:flex-row gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <div className="w-full sm:w-32 h-40 bg-gray-200 rounded-lg overflow-hidden border border-gray-300 flex-shrink-0 relative group">
+                  <img 
+                    src={approveAoaModalData.cover_url} 
+                    className="w-full h-full object-cover" 
+                    alt="Capa do Produto" 
+                  />
+                </div>
+                <div className="flex-1 flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-lg font-bold text-gray-900">{approveAoaModalData.title}</h4>
+                    <p className="text-xs text-gray-500 mt-1 uppercase font-semibold">
+                      Criador: {approveAoaModalData.collaborators?.display_name} ({String(approveAoaModalData.collaborators?.plan || '').replace('_', ' ')})
+                    </p>
+                    <p className="text-xs text-gray-600 mt-2 line-clamp-3">{approveAoaModalData.description}</p>
+                  </div>
+                  
+                  {/* Downloads Row */}
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadCover(approveAoaModalData)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-700 shadow-sm"
+                    >
+                      ⬇️ Baixar Capa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadFile(approveAoaModalData)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white shadow-sm"
+                    >
+                      💾 Baixar Arquivo Principal
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <button
-                onClick={() => handleApproveProduct(approveAoaModalData, stripePriceId)}
-                disabled={!stripePriceId.trim()}
-                className="w-full rounded-xl bg-green-600 py-3 font-semibold text-white hover:bg-green-700 disabled:opacity-50"
-              >
-                Ativar e Publicar na Loja
-              </button>
+              {/* Price Details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl border border-gray-100 bg-gray-50">
+                  <span className="block text-xs font-semibold uppercase text-gray-400">Preço Internacional (USD)</span>
+                  <span className="text-2xl font-bold text-gray-900 font-mono mt-1 block">
+                    $ {approveAoaModalData.price ? Number(approveAoaModalData.price).toFixed(2) : '0.00'}
+                  </span>
+                </div>
+                <div className="p-4 rounded-xl border border-gray-100 bg-gray-50">
+                  <span className="block text-xs font-semibold uppercase text-gray-400">Preço Angola (AOA)</span>
+                  <span className="text-2xl font-bold text-gray-900 font-mono mt-1 block">
+                    {approveAoaModalData.aoa_price ? `${Number(approveAoaModalData.aoa_price).toLocaleString()} Kz` : 'Não definido'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Approval Forms */}
+              <div className="space-y-4 border-t border-gray-100 pt-4">
+                {/* FastPay Link input */}
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
+                    Link da Facipay (AOA)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://fastpay.ao/pay/..."
+                    value={fastpayLink}
+                    onChange={(e) => setFastpayLink(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Insira o link de pagamento gerado na Facipay para compras em Kwanza (AOA).
+                  </p>
+                </div>
+
+                {/* Stripe Price ID input */}
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
+                    Stripe Price ID manual (USD/Internacional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="price_1..."
+                    value={stripePriceId}
+                    onChange={(e) => setStripePriceId(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Opcional. Se for um produto USD, o Stripe Price ID é gerado automaticamente. Caso queira forçar um preço manual do Stripe, insira-o aqui.
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 border-t border-gray-100 pt-4">
+                <button
+                  onClick={() => {
+                    setApproveAoaModalData(null);
+                    setRejectModalData({ id: approveAoaModalData.id, type: 'product' });
+                  }}
+                  className="px-4 py-3 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-semibold flex-1"
+                >
+                  Recusar Produto
+                </button>
+                <button
+                  onClick={() => handleApproveProduct(approveAoaModalData, stripePriceId, fastpayLink)}
+                  className="px-4 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold flex-1 shadow-md"
+                >
+                  Aprovar e Ativar na Loja
+                </button>
+              </div>
             </div>
           </div>
         </div>
