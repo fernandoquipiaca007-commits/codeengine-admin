@@ -1248,10 +1248,19 @@ export default function CollaboratorsAdmin() {
 
           {/* TAB: Settings (Configurações de Plano) */}
           {activeTab === 'settings' && (
-            <form onSubmit={handleSaveSettings} className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm max-w-xl space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 font-display">Preços e Link de Assinatura</h3>
-                <p className="text-xs text-gray-500 mt-1">Configurações globais dos planos pagos para os colaboradores (upgrade para Course Creator).</p>
+            <form onSubmit={handleSaveSettings} className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm max-w-2xl space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-150 pb-4 gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 font-display">Preços e Link de Assinatura</h3>
+                  <p className="text-xs text-gray-500 mt-1">Configurações globais dos planos pagos para os colaboradores (upgrade para Course Creator).</p>
+                </div>
+                <button
+                  type="submit"
+                  disabled={savingSettings}
+                  className="rounded-xl bg-primary px-6 py-2.5 font-semibold text-sm text-white hover:bg-primary-high transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm hover:shadow"
+                >
+                  {savingSettings ? 'Salvando...' : 'Salvar Configurações'}
+                </button>
               </div>
               
               <div>
