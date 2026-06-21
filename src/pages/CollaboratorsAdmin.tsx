@@ -19,6 +19,7 @@ interface Candidate {
     estimatedVolume?: string;
   };
   created_at: string;
+  plan_expires_at?: string;
   members?: {
     email: string;
   };
@@ -86,7 +87,7 @@ const ADMIN_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
 
 export default function CollaboratorsAdmin() {
   const { notifyError, notifySuccess } = useToast();
-  const [activeTab, setActiveTab] = useState<'candidates' | 'products' | 'withdrawals' | 'stats'>('candidates');
+  const [activeTab, setActiveTab] = useState<'candidates' | 'products' | 'withdrawals' | 'upgrades' | 'settings' | 'stats'>('candidates');
   
   // Data lists
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -98,7 +99,7 @@ export default function CollaboratorsAdmin() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Modals state
-  const [rejectModalData, setRejectModalData] = useState<{ id: string; type: 'candidate' | 'product' | 'withdrawal' } | null>(null);
+  const [rejectModalData, setRejectModalData] = useState<{ id: string; type: 'candidate' | 'product' | 'withdrawal' | 'upgrade' } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   
   const [approveAoaModalData, setApproveAoaModalData] = useState<PendingProduct | null>(null);
@@ -107,6 +108,64 @@ export default function CollaboratorsAdmin() {
 
   const [payoutModalData, setPayoutModalData] = useState<Withdrawal | null>(null);
   const [receiptUrl, setReceiptUrl] = useState('');
+
+  // Subscription settings states
+  const [subscriptionLinkSetting, setSubscriptionLinkSetting] = useState('');
+  const [subscriptionPriceUsdSetting, setSubscriptionPriceUsdSetting] = useState('');
+  const [subscriptionPriceAoaSetting, setSubscriptionPriceAoaSetting] = useState('');
+  const [subscriptionPriceIdSetting, setSubscriptionPriceIdSetting] = useState('');
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  // Upgrades list state
+  const [upgrades, setUpgrades] = useState<any[]>([]);
+
+  // Bulk actions selection states
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+
+  // Payout scheduling state
+  const [scheduleDate, setScheduleDate] = useState('');
+
+  // Collaborator Sales Viewer modal state
+  const [salesModalCollab, setSalesModalCollab] = useState<any | null>(null);
+  const [salesDetails, setSalesDetails] = useState<any>(null);
+  const [loadingSales, setLoadingSales] = useState(false);
+
+  // Manage Plan modal state
+  const [managePlanCollab, setManagePlanCollab] = useState<any | null>(null);
+  const [newPlanType, setNewPlanType] = useState<'ebook_creator' | 'course_creator'>('ebook_creator');
+  const [newPlanExpiry, setNewPlanExpiry] = useState('');
+
+  // Helper functions for selections
+  function toggleSelectCandidate(id: string) {
+    setSelectedCandidateIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  }
+
+  function toggleSelectAllCandidates(filteredCandidates: Candidate[]) {
+    const pendingIds = filteredCandidates.filter(c => c.status === 'pending').map(c => c.id);
+    if (selectedCandidateIds.length === pendingIds.length) {
+      setSelectedCandidateIds([]);
+    } else {
+      setSelectedCandidateIds(pendingIds);
+    }
+  }
+
+  function toggleSelectProduct(id: string) {
+    setSelectedProductIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  }
+
+  function toggleSelectAllProducts() {
+    const pendingProductIds = products.map(p => p.id);
+    if (selectedProductIds.length === pendingProductIds.length) {
+      setSelectedProductIds([]);
+    } else {
+      setSelectedProductIds(pendingProductIds);
+    }
+  }
 
   useEffect(() => {
     loadData();
@@ -151,11 +210,250 @@ export default function CollaboratorsAdmin() {
           throw new Error(data.error);
         }
       }
+
+      if (activeTab === 'upgrades') {
+        const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/upgrades`, {
+          headers: { 'x-admin-key': ADMIN_KEY }
+        });
+        const data = await res.json();
+        if (data.success) {
+          setUpgrades(data.upgrades || []);
+        } else {
+          throw new Error(data.error);
+        }
+      }
+
+      if (activeTab === 'settings') {
+        const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/settings`, {
+          headers: { 'x-admin-key': ADMIN_KEY }
+        });
+        const data = await res.json();
+        if (data.success) {
+          setSubscriptionLinkSetting(data.settings?.fastpay_subscription_link || '');
+          setSubscriptionPriceUsdSetting(data.settings?.subscription_price_usd || '9.00');
+          setSubscriptionPriceAoaSetting(data.settings?.subscription_price_aoa || '8000.00');
+          setSubscriptionPriceIdSetting(data.settings?.stripe_subscription_price_id || '');
+        } else {
+          throw new Error(data.error);
+        }
+      }
     } catch (err: any) {
       console.error('Error loading admin data:', err);
       notifyError(err.message || 'Erro ao carregar dados de colaboradores.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  // ============================================
+  // SUBSCRIPTION & SETTINGS ACTIONS
+  // ============================================
+
+  async function handleSaveSettings(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingSettings(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/settings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': ADMIN_KEY
+        },
+        body: JSON.stringify({
+          settings: {
+            fastpay_subscription_link: subscriptionLinkSetting.trim(),
+            subscription_price_usd: subscriptionPriceUsdSetting.trim(),
+            subscription_price_aoa: subscriptionPriceAoaSetting.trim(),
+            stripe_subscription_price_id: subscriptionPriceIdSetting.trim()
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        notifySuccess('Configurações atualizadas com sucesso!');
+        void loadData();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      notifyError(err.message || 'Erro ao salvar configurações.');
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
+  async function handleApproveUpgrade(id: string) {
+    setActionLoading(`approve-upgrade-${id}`);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/upgrades/${id}/approve`, {
+        method: 'POST',
+        headers: { 'x-admin-key': ADMIN_KEY }
+      });
+      const data = await res.json();
+      if (data.success) {
+        notifySuccess('Upgrade de plano aprovado com sucesso!');
+        void loadData();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      notifyError(err.message || 'Erro ao aprovar upgrade.');
+    } finally {
+      setActionLoading('');
+    }
+  }
+
+  async function handleRejectUpgrade(id: string, reason: string) {
+    setActionLoading(`reject-upgrade-${id}`);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/upgrades/${id}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': ADMIN_KEY
+        },
+        body: JSON.stringify({ reason })
+      });
+      const data = await res.json();
+      if (data.success) {
+        notifySuccess('Upgrade de plano recusado.');
+        void loadData();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      notifyError(err.message || 'Erro ao rejeitar upgrade.');
+    } finally {
+      setActionLoading('');
+    }
+  }
+
+  async function handleViewSales(collab: any) {
+    setSalesModalCollab(collab);
+    setLoadingSales(true);
+    setSalesDetails(null);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/${collab.id}/sales`, {
+        headers: { 'x-admin-key': ADMIN_KEY }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSalesDetails(data);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      notifyError(err.message || 'Erro ao carregar histórico de vendas.');
+      setSalesModalCollab(null);
+    } finally {
+      setLoadingSales(false);
+    }
+  }
+
+  async function handleScheduleWithdrawalSubmit() {
+    if (!payoutModalData || !scheduleDate) {
+      notifyError('Por favor, informe uma data para o agendamento.');
+      return;
+    }
+    const { id } = payoutModalData;
+    setActionLoading(`schedule-payout-${id}`);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/withdrawals/${id}/schedule`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': ADMIN_KEY
+        },
+        body: JSON.stringify({ date: scheduleDate })
+      });
+      const data = await res.json();
+      if (data.success) {
+        notifySuccess('Pagamento agendado com sucesso!');
+        setPayoutModalData(null);
+        setScheduleDate('');
+        void loadData();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      notifyError(err.message || 'Erro ao agendar pagamento.');
+    } finally {
+      setActionLoading('');
+    }
+  }
+
+  async function handleBulkApproveCandidates() {
+    if (selectedCandidateIds.length === 0) return;
+    setActionLoading('bulk-approve-candidates');
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/bulk-approve-candidates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': ADMIN_KEY
+        },
+        body: JSON.stringify({ ids: selectedCandidateIds, adminUserId: null })
+      });
+      const data = await res.json();
+      if (data.success) {
+        notifySuccess(`${selectedCandidateIds.length} candidatos aprovados em massa!`);
+        setSelectedCandidateIds([]);
+        void loadData();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      notifyError(err.message || 'Erro na aprovação em massa.');
+    } finally {
+      setActionLoading('');
+    }
+  }
+
+  async function handleBulkApproveProducts() {
+    if (selectedProductIds.length === 0) return;
+    setActionLoading('bulk-approve-products');
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/bulk-approve-products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': ADMIN_KEY
+        },
+        body: JSON.stringify({ ids: selectedProductIds })
+      });
+      const data = await res.json();
+      if (data.success) {
+        notifySuccess(`${selectedProductIds.length} produtos aprovados em massa!`);
+        setSelectedProductIds([]);
+        void loadData();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      notifyError(err.message || 'Erro na aprovação de produtos em massa.');
+    } finally {
+      setActionLoading('');
+    }
+  }
+
+  async function handleUpdatePlanSubmit() {
+    if (!managePlanCollab) return;
+    try {
+      const { error } = await supabaseAdmin
+        .from('collaborators')
+        .update({
+          plan: newPlanType,
+          plan_expires_at: newPlanExpiry ? new Date(newPlanExpiry).toISOString() : null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', managePlanCollab.id);
+
+      if (error) throw error;
+      notifySuccess('Plano do colaborador atualizado com sucesso!');
+      setManagePlanCollab(null);
+      void loadData();
+    } catch (err: any) {
+      notifyError(err.message || 'Erro ao atualizar plano.');
     }
   }
 
@@ -426,7 +724,7 @@ export default function CollaboratorsAdmin() {
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          <Users size={16} /> Candidatos Pendentes
+          <Users size={16} /> Candidatos & Parceiros
         </button>
         <button
           onClick={() => setActiveTab('products')}
@@ -449,6 +747,26 @@ export default function CollaboratorsAdmin() {
           <Landmark size={16} /> Fila de Saques
         </button>
         <button
+          onClick={() => setActiveTab('upgrades')}
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'upgrades'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          <Landmark size={16} /> Comprovantes de Assinatura
+        </button>
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'settings'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          <Database size={16} /> Configurações de Plano
+        </button>
+        <button
           onClick={() => setActiveTab('stats')}
           className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-all ${
             activeTab === 'stats'
@@ -469,172 +787,316 @@ export default function CollaboratorsAdmin() {
         <div className="space-y-6">
           {/* TAB 1: Candidates */}
           {activeTab === 'candidates' && (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold uppercase text-gray-400">
-                    <th className="px-6 py-4">Nome & Contato</th>
-                    <th className="px-6 py-4">Especialidade / Bio</th>
-                    <th className="px-6 py-4">Payout Esperado</th>
-                    <th className="px-6 py-4">Onboarding Survey</th>
-                    <th className="px-6 py-4 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {candidates.filter(c => c.status === 'pending').length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-12 text-gray-400">Nenhum candidato aguardando moderação.</td>
+            <div className="space-y-6">
+              {/* Bulk actions bar */}
+              {selectedCandidateIds.length > 0 && (
+                <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                  <span className="text-sm text-gray-700 font-medium">
+                    <span className="font-bold text-primary">{selectedCandidateIds.length}</span> candidatos selecionados para aprovação em massa.
+                  </span>
+                  <button
+                    onClick={handleBulkApproveCandidates}
+                    disabled={actionLoading !== null}
+                    className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-high transition-all"
+                  >
+                    Aprovar Candidaturas Selecionadas
+                  </button>
+                </div>
+              )}
+
+              {/* Section 1: Pending Candidates */}
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900 text-base">Candidatos Aguardando Moderação</h3>
+                </div>
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold uppercase text-gray-400">
+                      <th className="px-6 py-4 w-10">
+                        <input
+                          type="checkbox"
+                          checked={selectedCandidateIds.length > 0 && selectedCandidateIds.length === candidates.filter(c => c.status === 'pending').length}
+                          onChange={() => toggleSelectAllCandidates(candidates)}
+                          className="rounded text-primary focus:ring-primary h-4 w-4"
+                        />
+                      </th>
+                      <th className="px-6 py-4">Nome & Contato</th>
+                      <th className="px-6 py-4">Especialidade / Bio</th>
+                      <th className="px-6 py-4">Payout Esperado</th>
+                      <th className="px-6 py-4">Onboarding Survey</th>
+                      <th className="px-6 py-4 text-right">Ações</th>
                     </tr>
-                  ) : (
-                    candidates.filter(c => c.status === 'pending').map((cand) => (
-                      <tr key={cand.id}>
-                        <td className="px-6 py-4">
-                          <div className="font-semibold text-gray-900">{cand.display_name}</div>
-                          <div className="text-xs text-gray-400">{cand.members?.email}</div>
-                          <div className="text-[10px] text-gray-400 mt-1">Data: {new Date(cand.created_at).toLocaleDateString('pt-BR')}</div>
-                        </td>
-                        <td className="px-6 py-4 max-w-xs">
-                          <div className="font-medium text-gray-700">{cand.specialty}</div>
-                          <div className="text-xs text-gray-400 line-clamp-2 mt-1">{cand.bio}</div>
-                        </td>
-                        <td className="px-6 py-4 text-xs">
-                          <div className="font-semibold text-gray-900 uppercase">{cand.payout_method}</div>
-                          {cand.payout_method === 'paypal' ? (
-                            <div className="text-gray-400 truncate">{cand.payout_info?.email}</div>
-                          ) : (
-                            <div className="text-gray-400 truncate">{cand.payout_info?.bankName} - {cand.payout_info?.iban}</div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-xs space-y-1">
-                          <div>
-                            <strong>Tipos:</strong> {cand.onboarding_survey?.contentTypes?.join(', ') || 'Nenhum'}
-                          </div>
-                          <div>
-                            <strong>Volume 90d:</strong>{' '}
-                            <span className="font-semibold text-primary">
-                              {cand.onboarding_survey?.estimatedVolume === 'less_1gb' && 'Menos de 1 GB'}
-                              {cand.onboarding_survey?.estimatedVolume === '1_5gb' && '1 a 5 GB'}
-                              {cand.onboarding_survey?.estimatedVolume === '5_20gb' && '5 a 20 GB'}
-                              {cand.onboarding_survey?.estimatedVolume === 'more_20gb' && 'Mais de 20 GB'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => handleApproveCandidate(cand.id)}
-                              disabled={actionLoading !== null}
-                              className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-green-700 transition-all flex items-center gap-1 disabled:opacity-50"
-                            >
-                              <Check size={14} /> Aprovar
-                            </button>
-                            <button
-                              onClick={() => setRejectModalData({ id: cand.id, type: 'candidate' })}
-                              disabled={actionLoading !== null}
-                              className="rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 transition-all disabled:opacity-50"
-                            >
-                              Recusar
-                            </button>
-                          </div>
-                        </td>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {candidates.filter(c => c.status === 'pending').length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="text-center py-12 text-gray-400">Nenhum candidato aguardando moderação.</td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      candidates.filter(c => c.status === 'pending').map((cand) => (
+                        <tr key={cand.id}>
+                          <td className="px-6 py-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedCandidateIds.includes(cand.id)}
+                              onChange={() => toggleSelectCandidate(cand.id)}
+                              className="rounded text-primary focus:ring-primary h-4 w-4"
+                            />
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="font-semibold text-gray-900">{cand.display_name}</div>
+                            <div className="text-xs text-gray-400">{cand.members?.email}</div>
+                            <div className="text-[10px] text-gray-400 mt-1">Data: {new Date(cand.created_at).toLocaleDateString('pt-BR')}</div>
+                          </td>
+                          <td className="px-6 py-4 max-w-xs">
+                            <div className="font-medium text-gray-700">{cand.specialty}</div>
+                            <div className="text-xs text-gray-400 line-clamp-2 mt-1">{cand.bio}</div>
+                          </td>
+                          <td className="px-6 py-4 text-xs">
+                            <div className="font-semibold text-gray-900 uppercase">{cand.payout_method}</div>
+                            {cand.payout_method === 'paypal' ? (
+                              <div className="text-gray-400 truncate">{cand.payout_info?.email}</div>
+                            ) : (
+                              <div className="text-gray-400 truncate">{cand.payout_info?.bankName} - {cand.payout_info?.iban}</div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-xs space-y-1">
+                            <div>
+                              <strong>Tipos:</strong> {cand.onboarding_survey?.contentTypes?.join(', ') || 'Nenhum'}
+                            </div>
+                            <div>
+                              <strong>Volume 90d:</strong>{' '}
+                              <span className="font-semibold text-primary">
+                                {cand.onboarding_survey?.estimatedVolume === 'less_1gb' && 'Menos de 1 GB'}
+                                {cand.onboarding_survey?.estimatedVolume === '1_5gb' && '1 a 5 GB'}
+                                {cand.onboarding_survey?.estimatedVolume === '5_20gb' && '5 a 20 GB'}
+                                {cand.onboarding_survey?.estimatedVolume === 'more_20gb' && 'Mais de 20 GB'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                onClick={() => handleApproveCandidate(cand.id)}
+                                disabled={actionLoading !== null}
+                                className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-green-700 transition-all flex items-center gap-1 disabled:opacity-50"
+                              >
+                                <Check size={14} /> Aprovar
+                              </button>
+                              <button
+                                onClick={() => setRejectModalData({ id: cand.id, type: 'candidate' })}
+                                disabled={actionLoading !== null}
+                                className="rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 transition-all disabled:opacity-50"
+                              >
+                                Recusar
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Section 2: Active Collaborators */}
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <div className="border-b border-gray-200 px-6 py-4">
+                  <h3 className="font-semibold text-gray-900 text-base">Colaboradores Parceiros Ativos</h3>
+                </div>
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold uppercase text-gray-400">
+                      <th className="px-6 py-4">Nome & Contato</th>
+                      <th className="px-6 py-4">Plano</th>
+                      <th className="px-6 py-4">Expira em</th>
+                      <th className="px-6 py-4">Payout Esperado</th>
+                      <th className="px-6 py-4 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {candidates.filter(c => c.status === 'approved').length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-12 text-gray-400">Nenhum colaborador parceiro ativo no momento.</td>
+                      </tr>
+                    ) : (
+                      candidates.filter(c => c.status === 'approved').map((cand) => (
+                        <tr key={cand.id}>
+                          <td className="px-6 py-4">
+                            <div className="font-semibold text-gray-900">{cand.display_name}</div>
+                            <div className="text-xs text-gray-400">{cand.members?.email}</div>
+                          </td>
+                          <td className="px-6 py-4 text-xs font-semibold uppercase">
+                            {cand.plan === 'course_creator' ? (
+                              <span className="text-purple-600 bg-purple-50 px-2 py-0.5 rounded">Course Creator</span>
+                            ) : (
+                              <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Ebook Creator</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-xs text-gray-500">
+                            {cand.plan_expires_at ? new Date(cand.plan_expires_at).toLocaleDateString('pt-BR') : 'Sem expiração (Grátis)'}
+                          </td>
+                          <td className="px-6 py-4 text-xs">
+                            <div className="font-semibold text-gray-900 uppercase">{cand.payout_method}</div>
+                            {cand.payout_method === 'paypal' ? (
+                              <div className="text-gray-400 truncate">{cand.payout_info?.email}</div>
+                            ) : (
+                              <div className="text-gray-400 truncate">{cand.payout_info?.bankName} - {cand.payout_info?.iban}</div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                onClick={() => handleViewSales(cand)}
+                                className="rounded-lg bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition-all"
+                              >
+                                Ver Vendas
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setManagePlanCollab(cand);
+                                  setNewPlanType(cand.plan);
+                                  setNewPlanExpiry(cand.plan_expires_at ? cand.plan_expires_at.split('T')[0] : '');
+                                }}
+                                className="rounded-lg bg-gray-100 border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-200 transition-all"
+                              >
+                                Gerenciar Plano
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           {/* TAB 2: Pending Products */}
           {activeTab === 'products' && (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold uppercase text-gray-400">
-                    <th className="px-6 py-4">Produto</th>
-                    <th className="px-6 py-4">Criador / Plano</th>
-                    <th className="px-6 py-4">Preço</th>
-                    <th className="px-6 py-4">Licenciamento</th>
-                    <th className="px-6 py-4">Mídia / Download</th>
-                    <th className="px-6 py-4 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {products.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="text-center py-12 text-gray-400">Nenhum produto aguardando aprovação.</td>
+            <div className="space-y-6">
+              {/* Bulk actions bar */}
+              {selectedProductIds.length > 0 && (
+                <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                  <span className="text-sm text-gray-700 font-medium">
+                    <span className="font-bold text-primary">{selectedProductIds.length}</span> produtos selecionados para aprovação em massa.
+                  </span>
+                  <button
+                    onClick={handleBulkApproveProducts}
+                    disabled={actionLoading !== null}
+                    className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-high transition-all"
+                  >
+                    Aprovar Produtos Selecionados
+                  </button>
+                </div>
+              )}
+
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold uppercase text-gray-400">
+                      <th className="px-6 py-4 w-10">
+                        <input
+                          type="checkbox"
+                          checked={selectedProductIds.length > 0 && selectedProductIds.length === products.length}
+                          onChange={toggleSelectAllProducts}
+                          className="rounded text-primary focus:ring-primary h-4 w-4"
+                        />
+                      </th>
+                      <th className="px-6 py-4">Produto</th>
+                      <th className="px-6 py-4">Criador / Plano</th>
+                      <th className="px-6 py-4">Preço</th>
+                      <th className="px-6 py-4">Licenciamento</th>
+                      <th className="px-6 py-4">Mídia / Download</th>
+                      <th className="px-6 py-4 text-right">Ações</th>
                     </tr>
-                  ) : (
-                    products.map((prod) => (
-                      <tr key={prod.id}>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <img src={prod.cover_url} className="h-12 w-10 object-cover rounded border border-gray-150" alt="" />
-                            <div>
-                              <div className="font-semibold text-gray-900 line-clamp-1">{prod.title}</div>
-                              <div className="text-xs text-gray-400 mt-1 line-clamp-2">{prod.description}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-gray-900">{prod.collaborators?.display_name}</div>
-                          <div className="text-xs text-gray-400 capitalize">{String(prod.collaborators?.plan || '').replace('_', ' ')}</div>
-                        </td>
-                        <td className="px-6 py-4 font-bold text-gray-950">
-                          {formatPrice(prod)}
-                        </td>
-                        <td className="px-6 py-4 text-xs">
-                          <div className="font-semibold text-gray-800 capitalize">{prod.licensing_info?.type}</div>
-                          <div className="text-gray-400">{prod.licensing_info?.lifetime ? 'Vitalício' : `${prod.licensing_info?.duration_days} dias`}</div>
-                        </td>
-                        <td className="px-6 py-4 text-xs space-y-1">
-                          <div>
-                            <a href={prod.storage_url} className="text-primary hover:underline font-semibold flex items-center gap-1">
-                              Download Arquivo <ExternalLink size={12} />
-                            </a>
-                          </div>
-                          {prod.preview_url && (
-                            <div>
-                              <a href={prod.preview_url} className="text-gray-500 hover:underline">
-                                Amostra/Preview
-                              </a>
-                            </div>
-                          )}
-                          {prod.video_url && (
-                            <div>
-                              <a href={prod.video_url} className="text-orange-500 hover:underline">
-                                Vídeo Introdução
-                              </a>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => {
-                                setStripePriceId(prod.stripe_price_id || '');
-                                setFastpayLink(prod.fastpay_link || '');
-                                setApproveAoaModalData(prod);
-                              }}
-                              disabled={actionLoading !== null}
-                              className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-green-700 transition-all flex items-center gap-1 disabled:opacity-50"
-                            >
-                              <Check size={14} /> Analisar / Aprovar
-                            </button>
-                            <button
-                              onClick={() => setRejectModalData({ id: prod.id, type: 'product' })}
-                              disabled={actionLoading !== null}
-                              className="rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 transition-all disabled:opacity-50"
-                            >
-                              Recusar
-                            </button>
-                          </div>
-                        </td>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {products.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="text-center py-12 text-gray-400">Nenhum produto aguardando aprovação.</td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      products.map((prod) => (
+                        <tr key={prod.id}>
+                          <td className="px-6 py-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedProductIds.includes(prod.id)}
+                              onChange={() => toggleSelectProduct(prod.id)}
+                              className="rounded text-primary focus:ring-primary h-4 w-4"
+                            />
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <img src={prod.cover_url} className="h-12 w-10 object-cover rounded border border-gray-150" alt="" />
+                              <div>
+                                <div className="font-semibold text-gray-900 line-clamp-1">{prod.title}</div>
+                                <div className="text-xs text-gray-400 mt-1 line-clamp-2">{prod.description}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="font-medium text-gray-900">{prod.collaborators?.display_name}</div>
+                            <div className="text-xs text-gray-400 capitalize">{String(prod.collaborators?.plan || '').replace('_', ' ')}</div>
+                          </td>
+                          <td className="px-6 py-4 font-bold text-gray-950">
+                            {formatPrice(prod)}
+                          </td>
+                          <td className="px-6 py-4 text-xs">
+                            <div className="font-semibold text-gray-800 capitalize">{prod.licensing_info?.type}</div>
+                            <div className="text-gray-400">{prod.licensing_info?.lifetime ? 'Vitalício' : `${prod.licensing_info?.duration_days} dias`}</div>
+                          </td>
+                          <td className="px-6 py-4 text-xs space-y-1">
+                            <div>
+                              <a href={prod.storage_url} className="text-primary hover:underline font-semibold flex items-center gap-1">
+                                Download Arquivo <ExternalLink size={12} />
+                              </a>
+                            </div>
+                            {prod.preview_url && (
+                              <div>
+                                <a href={prod.preview_url} className="text-gray-500 hover:underline">
+                                  Amostra/Preview
+                                </a>
+                              </div>
+                            )}
+                            {prod.video_url && (
+                              <div>
+                                <a href={prod.video_url} className="text-orange-500 hover:underline">
+                                  Vídeo Introdução
+                                </a>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                onClick={() => {
+                                  setStripePriceId(prod.stripe_price_id || '');
+                                  setFastpayLink(prod.fastpay_link || '');
+                                  setApproveAoaModalData(prod);
+                                }}
+                                disabled={actionLoading !== null}
+                                className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-green-700 transition-all flex items-center gap-1 disabled:opacity-50"
+                              >
+                                <Check size={14} /> Analisar / Aprovar
+                              </button>
+                              <button
+                                onClick={() => setRejectModalData({ id: prod.id, type: 'product' })}
+                                disabled={actionLoading !== null}
+                                className="rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 transition-all disabled:opacity-50"
+                              >
+                                Recusar
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -711,6 +1173,144 @@ export default function CollaboratorsAdmin() {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {/* TAB: Upgrades (Comprovantes de Assinatura) */}
+          {activeTab === 'upgrades' && (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold uppercase text-gray-400">
+                    <th className="px-6 py-4">Colaborador</th>
+                    <th className="px-6 py-4">Plano Pretendido</th>
+                    <th className="px-6 py-4">Comprovativo</th>
+                    <th className="px-6 py-4">Data Solicitada</th>
+                    <th className="px-6 py-4 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {upgrades.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-12 text-gray-400">Nenhum comprovante de assinatura aguardando moderação.</td>
+                    </tr>
+                  ) : (
+                    upgrades.map((upg) => (
+                      <tr key={upg.id}>
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-gray-900">{upg.display_name}</div>
+                          <div className="text-xs text-gray-400">{upg.members?.email}</div>
+                        </td>
+                        <td className="px-6 py-4 text-xs font-semibold">
+                          <span className="text-purple-600 bg-purple-50 px-2 py-0.5 rounded uppercase">Course Creator</span>
+                        </td>
+                        <td className="px-6 py-4 text-xs">
+                          {upg.upgrade_receipt_url ? (
+                            <a
+                              href={upg.upgrade_receipt_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-primary hover:underline font-semibold flex items-center gap-1"
+                            >
+                              Ver Comprovativo <ExternalLink size={12} />
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">Sem arquivo</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-gray-500">
+                          {upg.upgrade_requested_at ? new Date(upg.upgrade_requested_at).toLocaleDateString('pt-BR') : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => handleApproveUpgrade(upg.id)}
+                              disabled={actionLoading !== null}
+                              className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-green-700 transition-all flex items-center gap-1 disabled:opacity-50"
+                            >
+                              <Check size={14} /> Aprovar Upgrade
+                            </button>
+                            <button
+                              onClick={() => setRejectModalData({ id: upg.id, type: 'upgrade' })}
+                              disabled={actionLoading !== null}
+                              className="rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 transition-all disabled:opacity-50"
+                            >
+                              Recusar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* TAB: Settings (Configurações de Plano) */}
+          {activeTab === 'settings' && (
+            <form onSubmit={handleSaveSettings} className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm max-w-xl space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 font-display">Preços e Link de Assinatura</h3>
+                <p className="text-xs text-gray-500 mt-1">Configurações globais dos planos pagos para os colaboradores (upgrade para Course Creator).</p>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Preço da Assinatura (USD)</label>
+                <input
+                  type="text"
+                  value={subscriptionPriceUsdSetting}
+                  onChange={(e) => setSubscriptionPriceUsdSetting(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-primary focus:outline-none"
+                  placeholder="9.00"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Preço da Assinatura (AOA / Kwanza)</label>
+                <input
+                  type="text"
+                  value={subscriptionPriceAoaSetting}
+                  onChange={(e) => setSubscriptionPriceAoaSetting(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-primary focus:outline-none"
+                  placeholder="8000.00"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Link de Pagamento Facipay (Angola)</label>
+                <input
+                  type="url"
+                  value={subscriptionLinkSetting}
+                  onChange={(e) => setSubscriptionLinkSetting(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-primary focus:outline-none"
+                  placeholder="https://fastpay.ao/pay/..."
+                  required
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Link da Facipay para pagamento em Kwanza (Angola).</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Stripe Price ID de Assinatura (USD)</label>
+                <input
+                  type="text"
+                  value={subscriptionPriceIdSetting}
+                  onChange={(e) => setSubscriptionPriceIdSetting(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-primary focus:outline-none"
+                  placeholder="price_..."
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Opcional. Identificador do preço recorrente correspondente no Stripe.</p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={savingSettings}
+                className="w-full rounded-xl bg-primary py-3 font-semibold text-white hover:bg-primary-high transition-all disabled:opacity-50"
+              >
+                {savingSettings ? 'Salvando...' : 'Salvar Configurações'}
+              </button>
+            </form>
           )}
 
           {/* TAB 4: Survey Demand Stats */}
@@ -859,6 +1459,11 @@ export default function CollaboratorsAdmin() {
                   if (rejectModalData.type === 'candidate') void handleRejectCandidateSubmit();
                   if (rejectModalData.type === 'product') void handleRejectProductSubmit();
                   if (rejectModalData.type === 'withdrawal') void handleRejectWithdrawalSubmit();
+                  if (rejectModalData.type === 'upgrade') {
+                    void handleRejectUpgrade(rejectModalData.id, rejectReason);
+                    setRejectModalData(null);
+                    setRejectReason('');
+                  }
                 }}
                 disabled={!rejectReason.trim()}
                 className="w-full rounded-xl bg-red-600 py-3 font-semibold text-white hover:bg-red-700 disabled:opacity-50"
@@ -1010,7 +1615,7 @@ export default function CollaboratorsAdmin() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3">
-              <h3 className="text-lg font-bold text-gray-900 font-display">Registrar Pagamento de Saque</h3>
+              <h3 className="text-lg font-bold text-gray-900 font-display">Registrar / Agendar Pagamento</h3>
               <button onClick={() => setPayoutModalData(null)} className="text-gray-400 hover:text-gray-600 text-sm">Fechar</button>
             </div>
             <div className="space-y-4">
@@ -1033,22 +1638,156 @@ export default function CollaboratorsAdmin() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Comprovante de Transferência (URL ou Ref):</label>
+              {/* OPÇÃO 1: Pagar Imediatamente */}
+              <div className="border-t border-gray-100 pt-3">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Opção 1: Pagar Agora</h4>
+                <label className="block text-xs text-gray-500 mb-1">Comprovante de Transferência:</label>
                 <input
                   type="text"
                   placeholder="Ex: https://link-comprovante.com/payout-123.pdf ou Ref: 8493029"
                   value={receiptUrl}
                   onChange={(e) => setReceiptUrl(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-primary focus:outline-none mb-2"
+                />
+                <button
+                  onClick={handleProcessWithdrawalSubmit}
+                  disabled={actionLoading !== null}
+                  className="w-full rounded-xl bg-green-600 py-3 font-semibold text-white hover:bg-green-700 disabled:opacity-50 text-sm"
+                >
+                  Confirmar Pagamento Imediato
+                </button>
+              </div>
+
+              {/* OPÇÃO 2: Agendar Pagamento */}
+              <div className="border-t border-gray-100 pt-3">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Opção 2: Agendar Pagamento</h4>
+                <label className="block text-xs text-gray-500 mb-1">Data para o Pagamento:</label>
+                <input
+                  type="date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-primary focus:outline-none mb-2"
+                />
+                <button
+                  onClick={handleScheduleWithdrawalSubmit}
+                  disabled={!scheduleDate || actionLoading !== null}
+                  className="w-full rounded-xl bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50 text-sm"
+                >
+                  Agendar para {scheduleDate ? new Date(scheduleDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Data informada'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Collaborator Sales Viewer */}
+      {salesModalCollab && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-lg font-bold text-gray-900 font-display">Histórico de Vendas: {salesModalCollab.display_name}</h3>
+              <button onClick={() => setSalesModalCollab(null)} className="text-gray-400 hover:text-gray-600 text-sm font-semibold">Fechar</button>
+            </div>
+            
+            {loadingSales ? (
+              <div className="flex h-32 items-center justify-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100 text-sm">
+                  <div>
+                    <span className="block text-xs text-gray-400 font-semibold uppercase">Total Faturado</span>
+                    <span className="text-lg font-bold text-gray-800">
+                      {salesModalCollab.payout_method === 'iban'
+                        ? Number(salesDetails?.totalSalesAmount || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
+                        : Number(salesDetails?.totalSalesAmount || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-xs text-gray-400 font-semibold uppercase">Vendas Realizadas</span>
+                    <span className="text-lg font-bold text-gray-800">{salesDetails?.salesCount || 0}</span>
+                  </div>
+                </div>
+
+                <div className="border border-gray-100 rounded-xl overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-150 font-semibold uppercase text-gray-400">
+                        <th className="px-4 py-3">Produto</th>
+                        <th className="px-4 py-3">Comprador</th>
+                        <th className="px-4 py-3">Valor</th>
+                        <th className="px-4 py-3">Data</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {!salesDetails?.sales || salesDetails.sales.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="text-center py-6 text-gray-400">Nenhuma venda registrada ainda.</td>
+                        </tr>
+                      ) : (
+                        salesDetails.sales.map((sale: any) => (
+                          <tr key={sale.id}>
+                            <td className="px-4 py-3 font-medium text-gray-900">{sale.productTitle}</td>
+                            <td className="px-4 py-3 text-gray-500">{sale.buyerEmail}</td>
+                            <td className="px-4 py-3 font-semibold text-gray-900">
+                              {salesModalCollab.payout_method === 'iban'
+                                ? Number(sale.amountPaid).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
+                                : Number(sale.amountPaid).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                            </td>
+                            <td className="px-4 py-3 text-gray-400">
+                              {new Date(sale.purchaseDate).toLocaleDateString('pt-BR')}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Manage Collaborator Plan manually */}
+      {managePlanCollab && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-lg font-bold text-gray-900 font-display">Gerenciar Plano: {managePlanCollab.display_name}</h3>
+              <button onClick={() => setManagePlanCollab(null)} className="text-gray-400 hover:text-gray-600 text-sm font-semibold">Fechar</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Tipo de Plano</label>
+                <select
+                  value={newPlanType}
+                  onChange={(e: any) => setNewPlanType(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-primary focus:outline-none"
+                >
+                  <option value="ebook_creator">Ebook Creator (Grátis)</option>
+                  <option value="course_creator">Course Creator ($9/mês)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Expiração do Plano</label>
+                <input
+                  type="date"
+                  value={newPlanExpiry}
+                  onChange={(e) => setNewPlanExpiry(e.target.value)}
                   className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-primary focus:outline-none"
                 />
+                <p className="text-[10px] text-gray-400 mt-1">Deixe em branco para sem expiração.</p>
               </div>
 
               <button
-                onClick={handleProcessWithdrawalSubmit}
-                className="w-full rounded-xl bg-green-600 py-3 font-semibold text-white hover:bg-green-700"
+                onClick={handleUpdatePlanSubmit}
+                className="w-full rounded-xl bg-primary py-3 font-semibold text-white hover:bg-primary-high transition-all"
               >
-                Confirmar Payout como Concluído
+                Salvar Alterações
               </button>
             </div>
           </div>
