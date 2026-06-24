@@ -1686,19 +1686,19 @@ export default function CollaboratorsAdmin() {
                             <div className="text-amber-400 font-semibold mb-0.5 flex items-center justify-center gap-1">
                               <ShieldCheck size={12} /> Garantia
                             </div>
-                            <div className="font-bold font-mono text-slate-200">${globalFunds?.totalGuarantee.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) || '0,00'}</div>
+                            <div className="font-bold font-mono text-slate-200">${globalFunds?.totalGuarantee?.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) || '0,00'}</div>
                           </div>
                           <div className="bg-slate-800/60 p-2.5 rounded-lg">
                             <div className="text-blue-400 font-semibold mb-0.5 flex items-center justify-center gap-1">
                               <Clock size={12} /> Proc.
                             </div>
-                            <div className="font-bold font-mono text-slate-200">${globalFunds?.totalProcessing.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) || '0,00'}</div>
+                            <div className="font-bold font-mono text-slate-200">${globalFunds?.totalProcessing?.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) || '0,00'}</div>
                           </div>
                           <div className="bg-slate-800/60 p-2.5 rounded-lg">
                             <div className="text-green-400 font-semibold mb-0.5 flex items-center justify-center gap-1">
                               <CheckCircle size={12} /> Disp.
                             </div>
-                            <div className="font-bold font-mono text-slate-200">${globalFunds?.totalAvailable.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) || '0,00'}</div>
+                            <div className="font-bold font-mono text-slate-200">${globalFunds?.totalAvailable?.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) || '0,00'}</div>
                           </div>
                         </div>
                       </div>
@@ -1742,19 +1742,19 @@ export default function CollaboratorsAdmin() {
                             <div className="text-amber-400 font-semibold mb-0.5 flex items-center justify-center gap-1">
                               <ShieldCheck size={12} /> Garantia
                             </div>
-                            <div className="font-bold font-mono text-slate-200">{globalFundsAoa?.totalGuarantee.toLocaleString('pt-AO') || '0'} Kz</div>
+                            <div className="font-bold font-mono text-slate-200">{globalFundsAoa?.totalGuarantee?.toLocaleString('pt-AO') || '0'} Kz</div>
                           </div>
                           <div className="bg-slate-800/60 p-2.5 rounded-lg">
                             <div className="text-blue-400 font-semibold mb-0.5 flex items-center justify-center gap-1">
                               <Clock size={12} /> Proc.
                             </div>
-                            <div className="font-bold font-mono text-slate-200">{globalFundsAoa?.totalProcessing.toLocaleString('pt-AO') || '0'} Kz</div>
+                            <div className="font-bold font-mono text-slate-200">{globalFundsAoa?.totalProcessing?.toLocaleString('pt-AO') || '0'} Kz</div>
                           </div>
                           <div className="bg-slate-800/60 p-2.5 rounded-lg">
                             <div className="text-green-400 font-semibold mb-0.5 flex items-center justify-center gap-1">
                               <CheckCircle size={12} /> Disp.
                             </div>
-                            <div className="font-bold font-mono text-slate-200">{globalFundsAoa?.totalAvailable.toLocaleString('pt-AO') || '0'} Kz</div>
+                            <div className="font-bold font-mono text-slate-200">{globalFundsAoa?.totalAvailable?.toLocaleString('pt-AO') || '0'} Kz</div>
                           </div>
                         </div>
                       </div>
