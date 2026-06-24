@@ -21,6 +21,7 @@ import FastPayOrders from './pages/FastPayOrders';
 import { Members } from './pages/Members';
 import Media from './pages/Media';
 import CollaboratorsAdmin from './pages/CollaboratorsAdmin';
+import AffiliatesAdmin from './pages/AffiliatesAdmin';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
@@ -181,6 +182,15 @@ function App() {
                         element={
                           <ProtectedRoute requirePermission="can_access_analytics">
                             <CollaboratorsAdmin />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="/affiliates"
+                        element={
+                          <ProtectedRoute requirePermission="can_access_analytics">
+                            <AffiliatesAdmin />
                           </ProtectedRoute>
                         }
                       />
