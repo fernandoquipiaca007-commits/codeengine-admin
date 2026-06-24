@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../lib/supabase-admin';
 import { 
   Users, FileText, Landmark, BarChart3, Database, Check, ExternalLink,
   TrendingUp, Download, DollarSign, Clock, CheckCircle, ShieldCheck,
-  BookOpen, Video, Wrench, Search, Save
+  BookOpen, Video, Wrench, Search, Save, Eye
 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
@@ -102,6 +102,7 @@ export default function CollaboratorsAdmin() {
   // Financial Analytics state
   const [analyticsSummary, setAnalyticsSummary] = useState<any | null>(null);
   const [analyticsCollaborators, setAnalyticsCollaborators] = useState<any[]>([]);
+  const [trafficStats, setTrafficStats] = useState<any | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -249,15 +250,25 @@ export default function CollaboratorsAdmin() {
       }
 
       if (activeTab === 'analytics') {
-        const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/analytics`, {
-          headers: { 'x-admin-key': ADMIN_KEY }
-        });
-        const data = await res.json();
-        if (data.success) {
-          setAnalyticsSummary(data.summary || null);
-          setAnalyticsCollaborators(data.collaborators || []);
+        const [resSummary, resTraffic] = await Promise.all([
+          fetch(`${BACKEND_URL}/api/admin/collaborators/analytics`, {
+            headers: { 'x-admin-key': ADMIN_KEY }
+          }),
+          fetch(`${BACKEND_URL}/api/admin/collaborators/traffic-stats`, {
+            headers: { 'x-admin-key': ADMIN_KEY }
+          })
+        ]);
+        const dataSummary = await resSummary.json();
+        const dataTraffic = await resTraffic.json();
+
+        if (dataSummary.success && dataTraffic.success) {
+          setAnalyticsSummary(dataSummary.summary || null);
+          setAnalyticsCollaborators(dataSummary.collaborators || []);
+          setGlobalFunds(dataSummary.globalFunds || null);
+          setGlobalFundsAoa(dataSummary.globalFundsAoa || null);
+          setTrafficStats(dataTraffic || null);
         } else {
-          throw new Error(data.error);
+          throw new Error(dataSummary.error || dataTraffic.error || 'Erro ao carregar dados analíticos.');
         }
       }
     } catch (err: any) {
@@ -891,14 +902,14 @@ export default function CollaboratorsAdmin() {
             <div className="space-y-6">
               {/* Bulk actions bar */}
               {selectedCandidateIds.length > 0 && (
-                <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
                   <span className="text-sm text-gray-700 font-medium">
-                    <span className="font-bold text-primary">{selectedCandidateIds.length}</span> candidatos selecionados para aprovação em massa.
+                    <span className="font-bold text-blue-600">{selectedCandidateIds.length}</span> candidatos selecionados para aprovação em massa.
                   </span>
                   <button
                     onClick={handleBulkApproveCandidates}
                     disabled={actionLoading !== null}
-                    className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-high transition-all"
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-all"
                   >
                     Aprovar Candidaturas Selecionadas
                   </button>
@@ -1049,7 +1060,7 @@ export default function CollaboratorsAdmin() {
                             <div className="flex gap-2 justify-end">
                               <button
                                 onClick={() => handleViewSales(cand)}
-                                className="rounded-lg bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition-all"
+                                className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-100 transition-all"
                               >
                                 Ver Vendas
                               </button>
@@ -1079,14 +1090,14 @@ export default function CollaboratorsAdmin() {
             <div className="space-y-6">
               {/* Bulk actions bar */}
               {selectedProductIds.length > 0 && (
-                <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
                   <span className="text-sm text-gray-700 font-medium">
-                    <span className="font-bold text-primary">{selectedProductIds.length}</span> produtos selecionados para aprovação em massa.
+                    <span className="font-bold text-blue-600">{selectedProductIds.length}</span> produtos selecionados para aprovação em massa.
                   </span>
                   <button
                     onClick={handleBulkApproveProducts}
                     disabled={actionLoading !== null}
-                    className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-high transition-all"
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-all"
                   >
                     Aprovar Produtos Selecionados
                   </button>
@@ -1433,7 +1444,7 @@ export default function CollaboratorsAdmin() {
                 <button
                   type="submit"
                   disabled={savingSettings}
-                  className="rounded-xl bg-primary px-6 py-2.5 font-semibold text-sm text-white hover:bg-primary-high transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm hover:shadow"
+                  className="rounded-xl bg-blue-600 px-6 py-2.5 font-semibold text-sm text-white hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm hover:shadow"
                 >
                   {savingSettings ? 'Salvando...' : 'Salvar Configurações'}
                 </button>
@@ -1491,7 +1502,7 @@ export default function CollaboratorsAdmin() {
               <button
                 type="submit"
                 disabled={savingSettings}
-                className="w-full rounded-xl bg-primary py-3 font-semibold text-white hover:bg-primary-high transition-all disabled:opacity-50"
+                className="w-full rounded-xl bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700 transition-all disabled:opacity-50"
               >
                 {savingSettings ? 'Salvando...' : 'Salvar Configurações'}
               </button>
@@ -1538,7 +1549,7 @@ export default function CollaboratorsAdmin() {
                         <span>{stats.formats.ebooks} ({stats.totalApplications ? Math.round((stats.formats.ebooks / stats.totalApplications) * 100) : 0}%)</span>
                       </div>
                       <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                        <div className="bg-primary h-full rounded-full" style={{ width: `${stats.totalApplications ? (stats.formats.ebooks / stats.totalApplications) * 100 : 0}%` }} />
+                        <div className="bg-blue-600 h-full rounded-full" style={{ width: `${stats.totalApplications ? (stats.formats.ebooks / stats.totalApplications) * 100 : 0}%` }} />
                       </div>
                     </div>
                     <div>
@@ -1547,7 +1558,7 @@ export default function CollaboratorsAdmin() {
                         <span>{stats.formats.courses} ({stats.totalApplications ? Math.round((stats.formats.courses / stats.totalApplications) * 100) : 0}%)</span>
                       </div>
                       <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                        <div className="bg-primary h-full rounded-full" style={{ width: `${stats.totalApplications ? (stats.formats.courses / stats.totalApplications) * 100 : 0}%` }} />
+                        <div className="bg-blue-600 h-full rounded-full" style={{ width: `${stats.totalApplications ? (stats.formats.courses / stats.totalApplications) * 100 : 0}%` }} />
                       </div>
                     </div>
                     <div>
@@ -1556,7 +1567,7 @@ export default function CollaboratorsAdmin() {
                         <span>{stats.formats.tools} ({stats.totalApplications ? Math.round((stats.formats.tools / stats.totalApplications) * 100) : 0}%)</span>
                       </div>
                       <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                        <div className="bg-primary h-full rounded-full" style={{ width: `${stats.totalApplications ? (stats.formats.tools / stats.totalApplications) * 100 : 0}%` }} />
+                        <div className="bg-blue-600 h-full rounded-full" style={{ width: `${stats.totalApplications ? (stats.formats.tools / stats.totalApplications) * 100 : 0}%` }} />
                       </div>
                     </div>
                     <div>
@@ -1565,7 +1576,7 @@ export default function CollaboratorsAdmin() {
                         <span>{stats.formats.events} ({stats.totalApplications ? Math.round((stats.formats.events / stats.totalApplications) * 100) : 0}%)</span>
                       </div>
                       <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                        <div className="bg-primary h-full rounded-full" style={{ width: `${stats.totalApplications ? (stats.formats.events / stats.totalApplications) * 100 : 0}%` }} />
+                        <div className="bg-blue-600 h-full rounded-full" style={{ width: `${stats.totalApplications ? (stats.formats.events / stats.totalApplications) * 100 : 0}%` }} />
                       </div>
                     </div>
                   </div>
@@ -1844,6 +1855,116 @@ export default function CollaboratorsAdmin() {
                         )}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Real-Time Traffic Section */}
+                  {trafficStats && trafficStats.traffic && (
+                    <div className="grid gap-6 md:grid-cols-3">
+                      {/* Active Users 1m */}
+                      <div className="bg-gradient-to-br from-blue-900 to-indigo-950 text-white rounded-2xl border border-blue-800 p-5 shadow-lg relative overflow-hidden">
+                        <div className="absolute top-3 right-3 flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                        </div>
+                        <span className="text-[10px] text-blue-200 font-bold uppercase tracking-wider block">Visitantes Ativos Agora</span>
+                        <span className="text-3xl font-extrabold block mt-2 font-mono">{trafficStats.traffic.active1Min}</span>
+                        <span className="text-[11px] text-blue-300 mt-1 block">Usuários ativos no último minuto</span>
+                      </div>
+
+                      {/* Active Users 5m */}
+                      <div className="bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 p-5 shadow-lg">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Ativos nos últimos 5 min</span>
+                        <span className="text-3xl font-extrabold block mt-2 font-mono text-white">{trafficStats.traffic.active5Min}</span>
+                        <span className="text-[11px] text-slate-400 mt-1 block">Sessões únicas ativas recentemente</span>
+                      </div>
+
+                      {/* Total Page Views */}
+                      <div className="bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 p-5 shadow-lg">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Visualizações Totais</span>
+                        <span className="text-3xl font-extrabold block mt-2 font-mono text-white">{trafficStats.traffic.totalPageViews.toLocaleString('pt-AO')}</span>
+                        <span className="text-[11px] text-slate-400 mt-1 block">Total acumulado de páginas abertas</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Top Pages & Product Sales Section */}
+                  <div className="grid gap-6 lg:grid-cols-3">
+                    {/* Top Visited Pages (1/3 width) */}
+                    {trafficStats && trafficStats.traffic && (
+                      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm lg:col-span-1">
+                        <div className="border-b border-gray-200 px-5 py-4">
+                          <h3 className="font-semibold text-gray-900 text-sm font-display flex items-center gap-1.5">
+                            <Eye size={16} className="text-blue-500" /> Páginas Mais Visitadas (Últimos 30 Dias)
+                          </h3>
+                        </div>
+                        <div className="p-4">
+                          {trafficStats.traffic.topPages && trafficStats.traffic.topPages.length === 0 ? (
+                            <p className="text-center py-6 text-gray-400 text-xs">Nenhum tráfego registrado.</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {trafficStats.traffic.topPages.map((page: any, index: number) => (
+                                <div key={index} className="flex items-center justify-between text-xs border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                                  <span className="font-mono text-gray-600 truncate max-w-[180px]" title={page.path}>
+                                    {page.path}
+                                  </span>
+                                  <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full font-bold">
+                                    {page.count} views
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Product Sales Table (2/3 width) */}
+                    {trafficStats && trafficStats.sales && (
+                      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm lg:col-span-2">
+                        <div className="border-b border-gray-200 px-5 py-4 flex items-center justify-between">
+                          <h3 className="font-semibold text-gray-900 text-sm font-display flex items-center gap-1.5">
+                            <TrendingUp size={16} className="text-green-500" /> Desempenho e Vendas por Produto
+                          </h3>
+                          <div className="text-[10px] text-gray-500 font-mono">
+                            Faturamento Global: <span className="font-bold text-gray-900">${trafficStats.sales.totalRevenueUSD.toFixed(2)}</span> | <span className="font-bold text-gray-900">{trafficStats.sales.totalRevenueAOA.toLocaleString('pt-AO')} Kz</span>
+                          </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs text-gray-600">
+                            <thead>
+                              <tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-bold uppercase text-gray-400">
+                                <th className="px-5 py-3">Produto</th>
+                                <th className="px-5 py-3">Autor</th>
+                                <th className="px-5 py-3 text-center">Quant. Vendas</th>
+                                <th className="px-5 py-3 text-right">Faturamento USD</th>
+                                <th className="px-5 py-3 text-right">Faturamento AOA</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {trafficStats.sales.productSales && trafficStats.sales.productSales.length === 0 ? (
+                                <tr>
+                                  <td colSpan={5} className="text-center py-8 text-gray-400 text-xs">Nenhuma venda de produto registrada.</td>
+                                </tr>
+                              ) : (
+                                trafficStats.sales.productSales.map((ps: any) => (
+                                  <tr key={ps.id} className="hover:bg-gray-50/50 transition-colors">
+                                    <td className="px-5 py-3 font-semibold text-gray-900 text-xs">{ps.title}</td>
+                                    <td className="px-5 py-3 text-gray-500 text-xs">{ps.collaboratorName}</td>
+                                    <td className="px-5 py-3 text-center font-bold font-mono text-gray-700 text-xs">{ps.quantitySold}</td>
+                                    <td className="px-5 py-3 text-right font-mono text-gray-900 text-xs">
+                                      {ps.totalUSD > 0 ? `$${ps.totalUSD.toFixed(2)}` : '-'}
+                                    </td>
+                                    <td className="px-5 py-3 text-right font-mono text-gray-900 text-xs">
+                                      {ps.totalAOA > 0 ? `${ps.totalAOA.toLocaleString('pt-AO')} Kz` : '-'}
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -2203,7 +2324,7 @@ export default function CollaboratorsAdmin() {
 
               <button
                 onClick={handleUpdatePlanSubmit}
-                className="w-full rounded-xl bg-primary py-3 font-semibold text-white hover:bg-primary-high transition-all"
+                className="w-full rounded-xl bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700 transition-all"
               >
                 Salvar Alterações
               </button>
