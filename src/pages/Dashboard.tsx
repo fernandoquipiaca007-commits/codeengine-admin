@@ -1,328 +1,652 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { checkConnection } from '../lib/supabase-admin';
 import { useAdminAnalytics } from '../hooks/useAdminAnalytics';
 
-import { 
-  Eye, TrendingUp, Users, Activity, DollarSign, Landmark, 
-  Plus, Bookmark, Ticket, LayoutGrid, CheckCircle
+import {
+  Eye, TrendingUp, Users, Activity, DollarSign, Landmark,
+  Plus, Bookmark, Ticket, CheckCircle, Wifi, WifiOff,
+  RefreshCw, ShoppingCart, Star, Download, Bell, ArrowUpRight,
+  ArrowDownRight, Zap, Globe, BarChart3, Package, Clock, ChevronRight,
+  ShieldCheck, AlertTriangle
 } from 'lucide-react';
 
+// ─── helpers ────────────────────────────────────────────────────────────────
+const fmt = (n: number, decimals = 0) =>
+  n.toLocaleString('pt-AO', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
+const fmtUSD = (n: number) => `$${n.toFixed(2)}`;
+const fmtAOA = (n: number) => `${fmt(n, 0)} Kz`;
+
+function relTime(date: Date) {
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diff < 60) return 'agora mesmo';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m atrás`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h atrás`;
+  return `${Math.floor(diff / 86400)}d atrás`;
+}
+
+// ─── KPI Card ───────────────────────────────────────────────────────────────
+interface KpiCardProps {
+  label: string;
+  value: string;
+  sub?: string;
+  icon: React.ReactNode;
+  color: string;         // tailwind bg class for icon bg
+  iconColor: string;     // tailwind text class for icon
+  trend?: number | null; // positive = green, negative = red
+  loading?: boolean;
+  pulse?: boolean;
+}
+function KpiCard({ label, value, sub, icon, color, iconColor, trend, loading, pulse }: KpiCardProps) {
+  return (
+    <div className="group relative bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
+      {/* subtle gradient overlay on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white to-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
+      <div className="relative">
+        <div className="flex items-start justify-between mb-3">
+          <div className={`p-2.5 rounded-xl ${color}`}>
+            <div className={iconColor}>{icon}</div>
+          </div>
+          {pulse && (
+            <span className="relative flex h-2.5 w-2.5 mt-1">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+            </span>
+          )}
+          {trend !== undefined && trend !== null && !pulse && (
+            <div className={`flex items-center gap-0.5 text-xs font-bold ${trend >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              {trend >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+              {Math.abs(trend).toFixed(1)}%
+            </div>
+          )}
+        </div>
+        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{label}</p>
+        <p className="text-2xl font-extrabold text-gray-900 mt-1 font-mono leading-none">
+          {loading ? <span className="text-gray-300 animate-pulse">—</span> : value}
+        </p>
+        {sub && <p className="text-xs text-gray-400 mt-1.5">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Section Header ─────────────────────────────────────────────────────────
+function SectionHeader({ icon, title, badge }: { icon: React.ReactNode; title: string; badge?: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <div className="text-gray-500">{icon}</div>
+      <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">{title}</h2>
+      {badge && (
+        <span className="ml-auto text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{badge}</span>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Dashboard ─────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { data, loading: analyticsLoading, error: analyticsError, warning: analyticsWarning } = useAdminAnalytics();
+  const { data, loading: analyticsLoading, error: analyticsError, warning: analyticsWarning, lastUpdated, refresh } = useAdminAnalytics();
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error'>('checking');
-  const [errorMessage, setErrorMessage] = useState('');
-  
-  // Real-time Traffic and Product Sales states
   const [trafficStats, setTrafficStats] = useState<any | null>(null);
   const [loadingTraffic, setLoadingTraffic] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const prevActiveRef = useRef<number>(0);
+  const [activeUsersDelta, setActiveUsersDelta] = useState<number>(0);
 
-  useEffect(() => {
-    checkConnection().then((ok) => {
-      setConnectionStatus(ok ? 'connected' : 'error');
-      if (!ok) {
-        setErrorMessage('Failed to connect to Supabase. Check your environment variables.');
-      }
-    });
-
+  const loadTraffic = () => {
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
     const ADMIN_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
-
     setLoadingTraffic(true);
     fetch(`${BACKEND_URL}/api/admin/collaborators/traffic-stats`, {
       headers: { 'x-admin-key': ADMIN_KEY }
     })
       .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setTrafficStats(data);
+      .then(d => {
+        if (d.success) {
+          const current = d.traffic?.active1Min || 0;
+          setActiveUsersDelta(current - prevActiveRef.current);
+          prevActiveRef.current = current;
+          setTrafficStats(d);
         }
       })
-      .catch(err => console.error('Error fetching traffic stats:', err))
+      .catch(() => {})
       .finally(() => setLoadingTraffic(false));
+  };
+
+  useEffect(() => {
+    checkConnection().then(ok => setConnectionStatus(ok ? 'connected' : 'error'));
+    loadTraffic();
+    const id = setInterval(loadTraffic, 30_000);
+    return () => clearInterval(id);
   }, []);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refresh();
+    loadTraffic();
+    setRefreshing(false);
+  };
+
   const loading = analyticsLoading || connectionStatus === 'checking';
+  const activeNow = trafficStats?.traffic?.active1Min ?? 0;
+  const totalViews = trafficStats?.traffic?.totalPageViews ?? 0;
+  const topPages: { path: string; count: number }[] = trafficStats?.traffic?.topPages ?? [];
+  const productSales: any[] = trafficStats?.sales?.productSales ?? [];
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 overflow-x-hidden space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight font-display">Painel de Controle</h1>
-          <p className="mt-1.5 text-sm text-gray-500">
-            Bem-vindo ao Painel Administrativo da Loja de Conhecimento IA
-          </p>
-        </div>
-        {trafficStats && trafficStats.traffic && (
-          <div className="flex items-center gap-2 bg-green-50 border border-green-150 px-4 py-2 rounded-xl text-green-700 font-semibold text-xs shadow-sm self-start md:self-center">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-            <span>{trafficStats.traffic.active1Min} Usuários ativos agora</span>
-          </div>
-        )}
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50/30">
+      <div className="p-4 sm:p-6 md:p-8 space-y-8 max-w-[1600px] mx-auto">
 
-      {/* Connection Status */}
-      <div>
-        {connectionStatus === 'checking' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div className="flex items-center">
-              <svg className="animate-spin h-5 w-5 text-blue-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <p className="text-sm text-blue-800">Verificando conexão com Supabase...</p>
-            </div>
-          </div>
-        )}
-        {connectionStatus === 'connected' && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-            <CheckCircle size={20} className="text-green-600" />
-            <p className="text-sm text-green-800 font-medium">Conectado ao Supabase com sucesso</p>
-          </div>
-        )}
-        {connectionStatus === 'error' && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-            <Activity size={20} className="text-red-600 mt-0.5" />
-            <div>
-              <p className="text-sm text-red-800 font-semibold">Falha ao conectar ao Supabase</p>
-              {errorMessage && <p className="text-xs text-red-700 mt-1">{errorMessage}</p>}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {analyticsError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          Falha ao carregar métricas do dashboard: {analyticsError}
-        </div>
-      )}
-      {analyticsWarning && !analyticsError && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {analyticsWarning}
-        </div>
-      )}
-
-      {/* Main Core Statistics Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Total Products */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow transition-shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Total de Produtos</span>
-            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><LayoutGrid size={18} /></div>
-          </div>
-          <span className="text-3xl font-extrabold text-gray-900 block mt-2 font-display">{loading ? '...' : data.totalProducts}</span>
-          <span className="text-xs text-gray-500 mt-1 block">Produtos ativos na plataforma</span>
-        </div>
-
-        {/* Total Members */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow transition-shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Total de Membros</span>
-            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><Users size={18} /></div>
-          </div>
-          <span className="text-3xl font-extrabold text-gray-900 block mt-2 font-display">{loading ? '...' : data.totalMembers}</span>
-          <span className="text-xs text-gray-500 mt-1 block">Usuários e clientes cadastrados</span>
-        </div>
-
-        {/* Total Sales (Combined USD / AOA count) */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow transition-shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Total de Pedidos</span>
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><TrendingUp size={18} /></div>
-          </div>
-          <span className="text-3xl font-extrabold text-gray-900 block mt-2 font-display">
-            {loading ? '...' : `${data.totalSales} USD / ${data.aoaSales || 0} AOA`}
-          </span>
-          <span className="text-xs text-gray-500 mt-1 block">Transações concluídas com sucesso</span>
-        </div>
-
-        {/* Real-time traffic views */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow transition-shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Visualizações Totais</span>
-            <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><Eye size={18} /></div>
-          </div>
-          <span className="text-3xl font-extrabold text-gray-900 block mt-2 font-display">
-            {loadingTraffic ? '...' : (trafficStats?.traffic?.totalPageViews ? trafficStats.traffic.totalPageViews.toLocaleString('pt-AO') : '0')}
-          </span>
-          <span className="text-xs text-gray-500 mt-1 block">Visualizações de página acumuladas</span>
-        </div>
-      </div>
-
-      {/* Financial Breakdown (Separated Ecosystems) */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* USD ECOSYSTEM CARD */}
-        <div className="bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 p-6 shadow-md space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl">
-                <DollarSign size={18} />
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-200">
+                <BarChart3 size={16} className="text-white" />
               </div>
-              <h4 className="font-bold text-white tracking-wide uppercase text-sm">Faturamento USD (Stripe)</h4>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+                Painel de Controle
+              </h1>
             </div>
-            <span className="text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full px-2.5 py-0.5">USD</span>
+            <p className="mt-1 text-sm text-gray-500 pl-11">
+              Visão geral em tempo real · CodeEngine Platform
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Faturamento Total</span>
-              <span className="text-xl font-bold text-white block mt-1 font-mono">${(data.totalRevenue || 0).toFixed(2)}</span>
-            </div>
-            <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Faturamento Hoje</span>
-              <span className="text-xl font-bold text-green-400 block mt-1 font-mono">${(data.revenueToday || 0).toFixed(2)}</span>
-            </div>
-            <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Quantidade de Vendas</span>
-              <span className="text-xl font-bold text-white block mt-1 font-mono">{data.totalSales}</span>
-            </div>
-            <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Valor Médio do Pedido</span>
-              <span className="text-xl font-bold text-white block mt-1 font-mono">${(data.avgOrderValue || 0).toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
 
-        {/* AOA ECOSYSTEM CARD */}
-        <div className="bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 p-6 shadow-md space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl">
-                <Landmark size={18} />
-              </div>
-              <h4 className="font-bold text-white tracking-wide uppercase text-sm">Faturamento AOA (Kwanza / Facipay)</h4>
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Live users badge */}
+            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm border transition-colors ${
+              activeNow > 0
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-gray-50 border-gray-200 text-gray-500'
+            }`}>
+              <span className="relative flex h-2 w-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${activeNow > 0 ? 'bg-emerald-400' : 'bg-gray-300'} opacity-75`} />
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${activeNow > 0 ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+              </span>
+              {loadingTraffic ? '...' : `${activeNow} ativos agora`}
+              {activeUsersDelta > 0 && <span className="text-emerald-500 font-bold">+{activeUsersDelta}</span>}
             </div>
-            <span className="text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full px-2.5 py-0.5">AOA</span>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Faturamento Total</span>
-              <span className="text-xl font-bold text-white block mt-1 font-mono">{(data.aoaRevenue || 0).toLocaleString('pt-AO')} Kz</span>
-            </div>
-            <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Faturamento Hoje</span>
-              <span className="text-xl font-bold text-green-400 block mt-1 font-mono">{(data.aoaRevenueToday || 0).toLocaleString('pt-AO')} Kz</span>
-            </div>
-            <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Quantidade de Vendas</span>
-              <span className="text-xl font-bold text-white block mt-1 font-mono">{data.aoaSales || 0}</span>
-            </div>
-            <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Valor Médio do Pedido</span>
-              <span className="text-xl font-bold text-white block mt-1 font-mono">{(data.avgOrderValueAoa || 0).toLocaleString('pt-AO', { maximumFractionDigits: 0 })} Kz</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Traffic analysis & Product Sales tables */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Most visited pages */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm lg:col-span-1">
-          <div className="border-b border-gray-200 px-5 py-4">
-            <h3 className="font-bold text-gray-900 text-sm font-display flex items-center gap-1.5">
-              <Eye size={16} className="text-blue-500" /> Páginas Mais Visitadas
-            </h3>
-          </div>
-          <div className="p-4">
-            {loadingTraffic ? (
-              <p className="text-center py-6 text-gray-400 text-xs">Carregando dados...</p>
-            ) : trafficStats?.traffic?.topPages && trafficStats.traffic.topPages.length > 0 ? (
-              <div className="space-y-3">
-                {trafficStats.traffic.topPages.slice(0, 8).map((page: any, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between text-xs border-b border-gray-50 pb-2 last:border-0 last:pb-0">
-                    <span className="font-mono text-gray-600 truncate max-w-[170px]" title={page.path}>
-                      {page.path}
-                    </span>
-                    <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full font-bold">
-                      {page.count} views
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center py-6 text-gray-400 text-xs">Sem tráfego registrado.</p>
+            {/* Connection status */}
+            <div className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border ${
+              connectionStatus === 'connected'
+                ? 'bg-blue-50 border-blue-200 text-blue-700'
+                : connectionStatus === 'error'
+                ? 'bg-red-50 border-red-200 text-red-700'
+                : 'bg-gray-50 border-gray-200 text-gray-500'
+            }`}>
+              {connectionStatus === 'connected'
+                ? <><Wifi size={12} /> Supabase OK</>
+                : connectionStatus === 'error'
+                ? <><WifiOff size={12} /> Sem conexão</>
+                : <><Activity size={12} className="animate-pulse" /> Verificando...</>}
+            </div>
+
+            {/* Refresh */}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm disabled:opacity-50"
+            >
+              <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
+              Atualizar
+            </button>
+
+            {lastUpdated && (
+              <span className="text-[11px] text-gray-400">
+                <Clock size={10} className="inline mr-1" />
+                {relTime(lastUpdated)}
+              </span>
             )}
           </div>
         </div>
 
-        {/* Product sales performances */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm lg:col-span-2">
-          <div className="border-b border-gray-200 px-5 py-4 flex items-center justify-between">
-            <h3 className="font-bold text-gray-900 text-sm font-display flex items-center gap-1.5">
-              <TrendingUp size={16} className="text-green-500" /> Desempenho de Vendas por Produto
-            </h3>
+        {/* ── Alerts ─────────────────────────────────────────────────────── */}
+        {analyticsError && (
+          <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <AlertTriangle size={16} className="shrink-0" />
+            {analyticsError}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-gray-600">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-bold uppercase text-gray-400">
-                  <th className="px-5 py-3">Produto</th>
-                  <th className="px-5 py-3">Autor</th>
-                  <th className="px-5 py-3 text-center">Quant. Vendas</th>
-                  <th className="px-5 py-3 text-right">Faturamento USD</th>
-                  <th className="px-5 py-3 text-right">Faturamento AOA</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {loadingTraffic ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-8 text-gray-400 text-xs">Carregando dados...</td>
+        )}
+        {analyticsWarning && !analyticsError && (
+          <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertTriangle size={16} className="shrink-0" />
+            {analyticsWarning}
+          </div>
+        )}
+
+        {/* ── KPI Row 1 — Core metrics ────────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <KpiCard
+            label="Total de Produtos"
+            value={loading ? '…' : fmt(data.totalProducts)}
+            sub="Produtos ativos na plataforma"
+            icon={<Package size={18} />}
+            color="bg-indigo-50"
+            iconColor="text-indigo-600"
+            loading={loading}
+          />
+          <KpiCard
+            label="Membros Registados"
+            value={loading ? '…' : fmt(data.totalMembers)}
+            sub="Utilizadores & clientes"
+            icon={<Users size={18} />}
+            color="bg-violet-50"
+            iconColor="text-violet-600"
+            loading={loading}
+          />
+          <KpiCard
+            label="Vendas (USD)"
+            value={loading ? '…' : fmt(data.totalSales)}
+            sub={`Hoje: ${loading ? '…' : fmt(data.salesToday)} pedidos`}
+            icon={<ShoppingCart size={18} />}
+            color="bg-blue-50"
+            iconColor="text-blue-600"
+            loading={loading}
+          />
+          <KpiCard
+            label="Vendas (AOA)"
+            value={loading ? '…' : fmt(data.aoaSales)}
+            sub={`Hoje: ${loading ? '…' : fmt(data.aoaSalesToday)} pedidos`}
+            icon={<ShoppingCart size={18} />}
+            color="bg-amber-50"
+            iconColor="text-amber-600"
+            loading={loading}
+          />
+        </div>
+
+        {/* ── KPI Row 2 — Engagement ──────────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <KpiCard
+            label="Usuários Ativos Agora"
+            value={loadingTraffic ? '…' : fmt(activeNow)}
+            sub="Ativos nos últimos 60 s"
+            icon={<Zap size={18} />}
+            color="bg-emerald-50"
+            iconColor="text-emerald-600"
+            pulse={activeNow > 0}
+            loading={loadingTraffic}
+          />
+          <KpiCard
+            label="Visualizações Totais"
+            value={loadingTraffic ? '…' : fmt(totalViews)}
+            sub="Page views acumuladas"
+            icon={<Eye size={18} />}
+            color="bg-sky-50"
+            iconColor="text-sky-600"
+            loading={loadingTraffic}
+          />
+          <KpiCard
+            label="Downloads"
+            value={loading ? '…' : fmt(data.totalDownloads)}
+            sub="Conteúdos descarregados"
+            icon={<Download size={18} />}
+            color="bg-teal-50"
+            iconColor="text-teal-600"
+            loading={loading}
+          />
+          <KpiCard
+            label="Favoritos"
+            value={loading ? '…' : fmt(data.totalFavorites)}
+            sub="Produtos marcados"
+            icon={<Star size={18} />}
+            color="bg-rose-50"
+            iconColor="text-rose-500"
+            loading={loading}
+          />
+        </div>
+
+        {/* ── Financial Ecosystems ────────────────────────────────────────── */}
+        <div>
+          <SectionHeader icon={<DollarSign size={15} />} title="Ecossistemas Financeiros" badge="Tempo Real" />
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* USD */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/50 p-6 shadow-xl shadow-slate-900/20">
+              <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-700/60">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                    <DollarSign size={16} className="text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Stripe · USD</p>
+                    <p className="text-sm font-bold text-white">Faturamento em Dólar</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full px-2.5 py-1">USD $</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: 'Faturamento Total', value: fmtUSD(data.totalRevenue || 0), highlight: false },
+                  { label: 'Receita Hoje', value: fmtUSD(data.revenueToday || 0), highlight: true },
+                  { label: 'Pedidos Totais', value: fmt(data.totalSales || 0), highlight: false },
+                  { label: 'Ticket Médio', value: fmtUSD(data.avgOrderValue || 0), highlight: false },
+                ].map(item => (
+                  <div key={item.label} className="bg-slate-800/60 border border-slate-700/40 rounded-xl p-4 hover:bg-slate-800 transition-colors">
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{item.label}</p>
+                    <p className={`text-lg font-bold font-mono mt-1 ${item.highlight ? 'text-emerald-400' : 'text-white'}`}>
+                      {loading ? <span className="text-slate-600">—</span> : item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* AOA */}
+            <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-amber-950/30 to-slate-900 border border-slate-700/50 p-6 shadow-xl shadow-slate-900/20">
+              <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-700/60">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                    <Landmark size={16} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">FaciPay · AOA</p>
+                    <p className="text-sm font-bold text-white">Faturamento em Kwanza</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full px-2.5 py-1">Kz</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: 'Faturamento Total', value: fmtAOA(data.aoaRevenue || 0), highlight: false },
+                  { label: 'Receita Hoje', value: fmtAOA(data.aoaRevenueToday || 0), highlight: true },
+                  { label: 'Pedidos Totais', value: fmt(data.aoaSales || 0), highlight: false },
+                  { label: 'Ticket Médio', value: fmtAOA(data.avgOrderValueAoa || 0), highlight: false },
+                ].map(item => (
+                  <div key={item.label} className="bg-slate-800/60 border border-slate-700/40 rounded-xl p-4 hover:bg-slate-800 transition-colors">
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{item.label}</p>
+                    <p className={`text-lg font-bold font-mono mt-1 ${item.highlight ? 'text-emerald-400' : 'text-white'}`}>
+                      {loading ? <span className="text-slate-600">—</span> : item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Traffic + Product Sales ─────────────────────────────────────── */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Most visited pages */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Globe size={15} className="text-sky-500" />
+                <h3 className="text-sm font-bold text-gray-800">Páginas Mais Visitadas</h3>
+              </div>
+              <span className="text-[10px] bg-sky-50 text-sky-600 border border-sky-100 font-bold px-2 py-0.5 rounded-full">
+                {topPages.length} páginas
+              </span>
+            </div>
+            <div className="p-4 space-y-2">
+              {loadingTraffic ? (
+                [...Array(5)].map((_, i) => (
+                  <div key={i} className="h-8 bg-gray-100 rounded-lg animate-pulse" />
+                ))
+              ) : topPages.length > 0 ? (
+                topPages.slice(0, 8).map((page, idx) => {
+                  const max = topPages[0]?.count || 1;
+                  const pct = Math.round((page.count / max) * 100);
+                  return (
+                    <div key={idx} className="group">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-mono text-gray-600 truncate max-w-[160px] group-hover:text-gray-900 transition-colors" title={page.path}>
+                          {page.path}
+                        </span>
+                        <span className="font-bold text-gray-700 ml-2 shrink-0">{fmt(page.count)}</span>
+                      </div>
+                      <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8">
+                  <Eye size={28} className="text-gray-200 mx-auto mb-2" />
+                  <p className="text-xs text-gray-400">Sem dados de tráfego ainda.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Product Sales */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden lg:col-span-2">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={15} className="text-emerald-500" />
+                <h3 className="text-sm font-bold text-gray-800">Desempenho de Vendas por Produto</h3>
+              </div>
+              <Link to="/collaborators" className="flex items-center gap-1 text-[11px] text-indigo-600 font-bold hover:text-indigo-700 transition-colors">
+                Ver tudo <ChevronRight size={12} />
+              </Link>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-gray-50/80 border-b border-gray-100">
+                    <th className="px-5 py-3 text-[10px] font-bold uppercase text-gray-400 tracking-wider">Produto</th>
+                    <th className="px-4 py-3 text-[10px] font-bold uppercase text-gray-400 tracking-wider">Autor</th>
+                    <th className="px-4 py-3 text-[10px] font-bold uppercase text-gray-400 tracking-wider text-center">Qtd</th>
+                    <th className="px-4 py-3 text-[10px] font-bold uppercase text-gray-400 tracking-wider text-right">USD</th>
+                    <th className="px-4 py-3 text-[10px] font-bold uppercase text-gray-400 tracking-wider text-right">AOA</th>
                   </tr>
-                ) : trafficStats?.sales?.productSales && trafficStats.sales.productSales.length > 0 ? (
-                  trafficStats.sales.productSales.slice(0, 6).map((ps: any) => (
-                    <tr key={ps.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-5 py-3 font-semibold text-gray-900 text-xs">{ps.title}</td>
-                      <td className="px-5 py-3 text-gray-500 text-xs">{ps.collaboratorName}</td>
-                      <td className="px-5 py-3 text-center font-bold font-mono text-gray-700 text-xs">{ps.quantitySold}</td>
-                      <td className="px-5 py-3 text-right font-mono text-gray-900 text-xs">
-                        {ps.totalUSD > 0 ? `$${ps.totalUSD.toFixed(2)}` : '-'}
-                      </td>
-                      <td className="px-5 py-3 text-right font-mono text-gray-900 text-xs">
-                        {ps.totalAOA > 0 ? `${ps.totalAOA.toLocaleString('pt-AO')} Kz` : '-'}
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {loadingTraffic ? (
+                    [...Array(4)].map((_, i) => (
+                      <tr key={i}>
+                        {[...Array(5)].map((_, j) => (
+                          <td key={j} className="px-5 py-3">
+                            <div className="h-3 bg-gray-100 rounded animate-pulse" />
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : productSales.length > 0 ? (
+                    productSales.slice(0, 7).map((ps: any) => (
+                      <tr key={ps.id} className="hover:bg-gray-50/80 transition-colors group">
+                        <td className="px-5 py-3 font-semibold text-gray-900">{ps.title}</td>
+                        <td className="px-4 py-3 text-gray-500">{ps.collaboratorName || '—'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full text-[11px]">
+                            {ps.quantitySold}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-gray-800 font-bold">
+                          {ps.totalUSD > 0 ? <span className="text-blue-700">{fmtUSD(ps.totalUSD)}</span> : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-gray-800 font-bold">
+                          {ps.totalAOA > 0 ? <span className="text-amber-700">{fmtAOA(ps.totalAOA)}</span> : <span className="text-gray-300">—</span>}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="text-center py-10">
+                        <TrendingUp size={28} className="text-gray-200 mx-auto mb-2" />
+                        <p className="text-xs text-gray-400">Nenhuma venda registrada ainda.</p>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="text-center py-8 text-gray-400 text-xs">Nenhuma venda de produto registrada.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white shadow rounded-xl border border-gray-200 p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4 font-display">Ações Rápidas</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Link
-            to="/products?action=create"
-            className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-sm hover:shadow"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Adicionar Novo Produto
-          </Link>
-          <Link
-            to="/categories?action=create"
-            className="inline-flex items-center justify-center px-4 py-2.5 border border-gray-200 text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-sm hover:shadow"
-          >
-            <Bookmark className="mr-2 h-4 w-4 text-gray-400" />
-            Adicionar Categoria
-          </Link>
-          <Link
-            to="/coupons?action=create"
-            className="inline-flex items-center justify-center px-4 py-2.5 border border-gray-200 text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-sm hover:shadow"
-          >
-            <Ticket className="mr-2 h-4 w-4 text-gray-400" />
-            Criar Cupom
-          </Link>
+        {/* ── Recent Orders feed ─────────────────────────────────────────── */}
+        {data.recentOrders && data.recentOrders.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock size={15} className="text-violet-500" />
+                <h3 className="text-sm font-bold text-gray-800">Pedidos Recentes</h3>
+              </div>
+              <span className="text-[10px] bg-violet-50 text-violet-600 border border-violet-100 font-bold px-2 py-0.5 rounded-full">
+                últimas transações
+              </span>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {data.recentOrders.slice(0, 6).map((order: any, i: number) => (
+                <div key={i} className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50/80 transition-colors">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-[11px] ${
+                    order.currency === 'aoa'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {order.currency === 'aoa' ? 'Kz' : '$'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-900 truncate">{order.productTitle || 'Produto'}</p>
+                    <p className="text-[11px] text-gray-400">{order.memberEmail || 'Cliente'}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs font-bold text-gray-900">
+                      {order.currency === 'aoa'
+                        ? fmtAOA(order.amount_paid_aoa || 0)
+                        : fmtUSD(order.amount_paid || 0)}
+                    </p>
+                    <p className="text-[10px] text-gray-400">
+                      {order.created_at ? relTime(new Date(order.created_at)) : '—'}
+                    </p>
+                  </div>
+                  <CheckCircle size={14} className="text-emerald-400 shrink-0" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Engagement + Notifications ──────────────────────────────────── */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Bell size={15} className="text-orange-500" />
+              <h3 className="text-sm font-bold text-gray-800">Notificações</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Total enviadas</span>
+                <span className="text-sm font-bold text-gray-900 font-mono">{loading ? '—' : fmt(data.totalNotifications)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Não lidas</span>
+                <span className="text-sm font-bold text-orange-600 font-mono">{loading ? '—' : fmt(data.unreadNotifications)}</span>
+              </div>
+              <div className="h-px bg-gray-100" />
+              <Link to="/push" className="flex items-center gap-1.5 text-xs text-indigo-600 font-semibold hover:text-indigo-700">
+                Gerenciar notificações <ChevronRight size={12} />
+              </Link>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Activity size={15} className="text-teal-500" />
+              <h3 className="text-sm font-bold text-gray-800">Taxa de Conversão</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-end gap-2">
+                <span className="text-3xl font-extrabold text-gray-900 font-mono">
+                  {loading ? '—' : `${(data.conversionRate || 0).toFixed(1)}%`}
+                </span>
+              </div>
+              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-teal-400 to-emerald-500 rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(data.conversionRate || 0, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-400">Membros que compraram vs. total</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <ShieldCheck size={15} className="text-indigo-500" />
+              <h3 className="text-sm font-bold text-gray-800">Produto Destaque</h3>
+            </div>
+            <div className="space-y-2">
+              {data.topProductTitle ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Star size={14} className="text-amber-400 fill-amber-400 shrink-0" />
+                    <p className="text-xs font-semibold text-gray-800 line-clamp-2">{data.topProductTitle}</p>
+                  </div>
+                  <p className="text-[11px] text-gray-400">Produto mais vendido na plataforma</p>
+                </>
+              ) : (
+                <p className="text-xs text-gray-400">Nenhum dado disponível.</p>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* ── Quick Actions ───────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <SectionHeader icon={<Zap size={15} />} title="Ações Rápidas" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              {
+                to: '/products?action=create',
+                label: 'Novo Produto',
+                desc: 'Adicionar produto à loja',
+                icon: <Plus size={18} />,
+                primary: true,
+                color: 'from-indigo-500 to-purple-600',
+              },
+              {
+                to: '/collaborators',
+                label: 'Colaboradores',
+                desc: 'Gerir comissões e relatórios',
+                icon: <Users size={18} />,
+                primary: false,
+                color: '',
+              },
+              {
+                to: '/categories?action=create',
+                label: 'Categoria',
+                desc: 'Adicionar nova categoria',
+                icon: <Bookmark size={18} />,
+                primary: false,
+                color: '',
+              },
+              {
+                to: '/coupons?action=create',
+                label: 'Criar Cupom',
+                desc: 'Novo cupom de desconto',
+                icon: <Ticket size={18} />,
+                primary: false,
+                color: '',
+              },
+            ].map(action => (
+              <Link
+                key={action.to}
+                to={action.to}
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow hover:-translate-y-0.5 ${
+                  action.primary
+                    ? `bg-gradient-to-r ${action.color} text-white`
+                    : 'bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 hover:border-gray-300'
+                }`}
+              >
+                <span className={`${action.primary ? 'text-white/80' : 'text-gray-400'}`}>{action.icon}</span>
+                <div>
+                  <p className="leading-none">{action.label}</p>
+                  <p className={`text-[10px] mt-0.5 font-normal ${action.primary ? 'text-white/70' : 'text-gray-400'}`}>
+                    {action.desc}
+                  </p>
+                </div>
+                <ArrowUpRight size={14} className={`ml-auto ${action.primary ? 'text-white/60' : 'text-gray-300'}`} />
+              </Link>
+            ))}
+          </div>
+        </div>
+
       </div>
     </div>
   );
