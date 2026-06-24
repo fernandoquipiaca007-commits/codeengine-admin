@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabaseAdmin } from '../lib/supabase-admin';
 import { 
-  Users, FileText, Landmark, BarChart3, Database, Check, ExternalLink 
+  Users, FileText, Landmark, BarChart3, Database, Check, ExternalLink,
+  TrendingUp, Download, DollarSign, Clock, CheckCircle, ShieldCheck,
+  BookOpen, Video, Wrench, Search, Save
 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
@@ -87,13 +89,19 @@ const ADMIN_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
 
 export default function CollaboratorsAdmin() {
   const { notifyError, notifySuccess } = useToast();
-  const [activeTab, setActiveTab] = useState<'candidates' | 'products' | 'withdrawals' | 'upgrades' | 'settings' | 'stats'>('candidates');
+  const [activeTab, setActiveTab] = useState<'candidates' | 'products' | 'withdrawals' | 'upgrades' | 'settings' | 'stats' | 'analytics'>('candidates');
   
   // Data lists
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [products, setProducts] = useState<PendingProduct[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [globalFunds, setGlobalFunds] = useState<{ totalGuarantee: number; totalProcessing: number; totalAvailable: number } | null>(null);
+  const [globalFundsAoa, setGlobalFundsAoa] = useState<{ totalGuarantee: number; totalProcessing: number; totalAvailable: number } | null>(null);
   const [stats, setStats] = useState<OnboardingStats | null>(null);
+  
+  // Financial Analytics state
+  const [analyticsSummary, setAnalyticsSummary] = useState<any | null>(null);
+  const [analyticsCollaborators, setAnalyticsCollaborators] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -206,6 +214,8 @@ export default function CollaboratorsAdmin() {
         const data = await res.json();
         if (data.success) {
           setWithdrawals(data.withdrawals || []);
+          setGlobalFunds(data.globalFunds || null);
+          setGlobalFundsAoa(data.globalFundsAoa || null);
         } else {
           throw new Error(data.error);
         }
@@ -233,6 +243,19 @@ export default function CollaboratorsAdmin() {
           setSubscriptionPriceUsdSetting(data.settings?.subscription_price_usd || '9.00');
           setSubscriptionPriceAoaSetting(data.settings?.subscription_price_aoa || '8000.00');
           setSubscriptionPriceIdSetting(data.settings?.stripe_subscription_price_id || '');
+        } else {
+          throw new Error(data.error);
+        }
+      }
+
+      if (activeTab === 'analytics') {
+        const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/analytics`, {
+          headers: { 'x-admin-key': ADMIN_KEY }
+        });
+        const data = await res.json();
+        if (data.success) {
+          setAnalyticsSummary(data.summary || null);
+          setAnalyticsCollaborators(data.collaborators || []);
         } else {
           throw new Error(data.error);
         }
@@ -703,6 +726,74 @@ export default function CollaboratorsAdmin() {
     return Number(prod.price || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   };
 
+  function exportAnalyticsToCSV() {
+    if (!analyticsSummary || !analyticsCollaborators || analyticsCollaborators.length === 0) {
+      notifyError('Nenhum dado analítico disponível para exportação.');
+      return;
+    }
+
+    // Define CSV content starting with BOM for UTF-8 compatibility with Excel
+    let csvContent = '\uFEFF';
+
+    // Summary section
+    csvContent += 'RELATÓRIO FINANCEIRO CODE ENGINE\n';
+    csvContent += `Gerado em:;${new Date().toLocaleString('pt-PT')}\n\n`;
+    
+    csvContent += 'RESUMO GERAL DO ECOSSISTEMA;\n';
+    csvContent += ';Ecossistema USD (Internacional);Ecossistema AOA (Angola - Kwanza)\n';
+    csvContent += `Total Vendido;${analyticsSummary.totalSalesUSD.toFixed(2).replace('.', ',')};${analyticsSummary.totalSalesAOA.toFixed(2).replace('.', ',')}\n`;
+    csvContent += `Capital/Receita Code Engine;${analyticsSummary.totalPlatformRevenueUSD.toFixed(2).replace('.', ',')};${analyticsSummary.totalPlatformRevenueAOA.toFixed(2).replace('.', ',')}\n`;
+    csvContent += `Lucro Líquido Code Engine;${analyticsSummary.totalPlatformRevenueUSD.toFixed(2).replace('.', ',')};${analyticsSummary.totalPlatformRevenueAOA.toFixed(2).replace('.', ',')}\n`;
+    csvContent += `Total Pago (Saques Concluídos);${analyticsSummary.totalPaidOutUSD.toFixed(2).replace('.', ',')};${analyticsSummary.totalPaidOutAOA.toFixed(2).replace('.', ',')}\n`;
+    csvContent += `Total Devido (A Pagar);${analyticsSummary.totalOwedUSD.toFixed(2).replace('.', ',')};${analyticsSummary.totalOwedAOA.toFixed(2).replace('.', ',')}\n`;
+    csvContent += `Média de Ganhos por Colaborador;${analyticsSummary.avgEarningsUSD.toFixed(2).replace('.', ',')};${analyticsSummary.avgEarningsAOA.toFixed(2).replace('.', ',')}\n\n`;
+
+    // Collaborators table header
+    csvContent += 'ANÁLISE INDIVIDUAL DE COLABORADORES;\n';
+    csvContent += 'Nome;E-mail;Plano;Método de Payout;Detalhes Payout/Conta FaciPay;';
+    csvContent += 'Acumulado USD;Disponível USD;Em Garantia USD;Em Processamento USD;Pago USD;';
+    csvContent += 'Acumulado AOA;Disponível AOA;Em Garantia AOA;Em Processamento AOA;Pago AOA\n';
+
+    // Collaborators lines
+    for (const c of analyticsCollaborators) {
+      const payoutDetails = c.payout_method === 'paypal' 
+        ? c.payout_info?.email || ''
+        : c.payout_method === 'iban' 
+          ? `${c.payout_info?.bankName || ''} - IBAN: ${c.payout_info?.iban || ''}` 
+          : c.facipay_account || '';
+
+      csvContent += `"${c.display_name.replace(/"/g, '""')}";`;
+      csvContent += `"${c.email.replace(/"/g, '""')}";`;
+      csvContent += `"${c.plan === 'course_creator' ? 'Course Creator' : 'Ebook Creator'}";`;
+      csvContent += `"${c.payout_method || ''}";`;
+      csvContent += `"${payoutDetails.replace(/"/g, '""')}";`;
+      
+      csvContent += `${c.usd.accumulated_earnings.toFixed(2).replace('.', ',')};`;
+      csvContent += `${c.usd.available_balance.toFixed(2).replace('.', ',')};`;
+      csvContent += `${c.usd.guarantee_balance.toFixed(2).replace('.', ',')};`;
+      csvContent += `${c.usd.processing_balance.toFixed(2).replace('.', ',')};`;
+      csvContent += `${c.usd.withdrawn_amount.toFixed(2).replace('.', ',')};`;
+
+      csvContent += `${c.aoa.accumulated_earnings.toFixed(2).replace('.', ',')};`;
+      csvContent += `${c.aoa.available_balance.toFixed(2).replace('.', ',')};`;
+      csvContent += `${c.aoa.guarantee_balance.toFixed(2).replace('.', ',')};`;
+      csvContent += `${c.aoa.processing_balance.toFixed(2).replace('.', ',')};`;
+      csvContent += `${c.aoa.withdrawn_amount.toFixed(2).replace('.', ',')}\n`;
+    }
+
+    // Trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `CodeEngine_Relatorio_Financeiro_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    notifySuccess('Folha de cálculo financeira exportada com sucesso para Excel!');
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-gray-200 pb-5">
@@ -775,6 +866,16 @@ export default function CollaboratorsAdmin() {
           }`}
         >
           <BarChart3 size={16} /> Projeção de Demanda
+        </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'analytics'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          <TrendingUp size={16} /> Análise Financeira
         </button>
       </div>
 
@@ -1102,6 +1203,79 @@ export default function CollaboratorsAdmin() {
 
           {/* TAB 3: Withdrawals */}
           {activeTab === 'withdrawals' && (
+            <div className="space-y-6">
+
+              {/*                 <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl border border-slate-700 p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-1.5">
+                      <DollarSign size={16} className="text-blue-400" /> Ecossistema USD · Fundos na Plataforma
+                    </span>
+                    <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5">USD</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-4 text-center">
+                      <div className="flex justify-center text-amber-400 mb-2"><ShieldCheck size={20} /></div>
+                      <div className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-1">Em Garantia (D1-D3)</div>
+                      <div className="text-lg font-bold text-white font-mono">
+                        ${(globalFunds.totalGuarantee || 0).toFixed(2)}
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">Período de reembolso activo</p>
+                    </div>
+                    <div className="bg-blue-500/10 border border-blue-500/25 rounded-xl p-4 text-center">
+                      <div className="flex justify-center text-blue-400 mb-2"><Clock size={20} /></div>
+                      <div className="text-xs text-blue-400 font-semibold uppercase tracking-wider mb-1">Processando (D4-D6)</div>
+                      <div className="text-lg font-bold text-white font-mono">
+                        ${(globalFunds.totalProcessing || 0).toFixed(2)}
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">A liquidar pelo Stripe</p>
+                    </div>
+                    <div className="bg-green-500/10 border border-green-500/25 rounded-xl p-4 text-center">
+                      <div className="flex justify-center text-green-400 mb-2"><CheckCircle size={20} /></div>
+                      <div className="text-xs text-green-400 font-semibold uppercase tracking-wider mb-1">Disponível (Dia 7+)</div>
+                      <div className="text-lg font-bold text-white font-mono">
+                        ${(globalFunds.totalAvailable || 0).toFixed(2)}
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">Passível de saque</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+ 
+              {/* AOA Fund State Summary */}
+              {globalFundsAoa && (
+                <div className="bg-gradient-to-r from-amber-950 to-amber-900 rounded-xl border border-amber-700 p-5 mt-4 mb-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-1.5">
+                      <Landmark size={16} className="text-amber-400" /> Ecossistema AOA · Fundos na Plataforma (Kwanza)
+                    </span>
+                    <span className="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-2 py-0.5">AOA</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-4 text-center">
+                      <div className="flex justify-center text-amber-400 mb-2"><ShieldCheck size={20} /></div>
+                      <div className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-1">Em Garantia (D1-D3)</div>
+                      <div className="text-lg font-bold text-white font-mono">
+                        Kz {(globalFundsAoa.totalGuarantee || 0).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div className="bg-blue-500/10 border border-blue-500/25 rounded-xl p-4 text-center">
+                      <div className="flex justify-center text-blue-400 mb-2"><Clock size={20} /></div>
+                      <div className="text-xs text-blue-400 font-semibold uppercase tracking-wider mb-1">Processando (D4-D6)</div>
+                      <div className="text-lg font-bold text-white font-mono">
+                        Kz {(globalFundsAoa.totalProcessing || 0).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div className="bg-green-500/10 border border-green-500/25 rounded-xl p-4 text-center">
+                      <div className="flex justify-center text-green-400 mb-2"><CheckCircle size={20} /></div>
+                      <div className="text-xs text-green-400 font-semibold uppercase tracking-wider mb-1">Disponível (Dia 7+)</div>
+                      <div className="text-lg font-bold text-white font-mono">
+                        Kz {(globalFundsAoa.totalAvailable || 0).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
               <table className="w-full text-left text-sm">
                 <thead>
@@ -1173,7 +1347,9 @@ export default function CollaboratorsAdmin() {
                 </tbody>
               </table>
             </div>
+            </div>
           )}
+
 
           {/* TAB: Upgrades (Comprovantes de Assinatura) */}
           {activeTab === 'upgrades' && (
@@ -1335,9 +1511,9 @@ export default function CollaboratorsAdmin() {
                 <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Formatos Requisitados</span>
                   <div className="flex gap-4 mt-3 text-xs">
-                    <div>📚 Ebooks: <span className="font-bold text-gray-800">{stats.formats.ebooks}</span></div>
-                    <div>🎥 Vídeos: <span className="font-bold text-gray-800">{stats.formats.courses}</span></div>
-                    <div>🛠️ Tools: <span className="font-bold text-gray-800">{stats.formats.tools}</span></div>
+                    <div className="flex items-center gap-1"><BookOpen size={14} className="text-blue-500" /> Ebooks: <span className="font-bold text-gray-800">{stats.formats.ebooks}</span></div>
+                    <div className="flex items-center gap-1"><Video size={14} className="text-purple-500" /> Vídeos: <span className="font-bold text-gray-800">{stats.formats.courses}</span></div>
+                    <div className="flex items-center gap-1"><Wrench size={14} className="text-amber-500" /> Tools: <span className="font-bold text-gray-800">{stats.formats.tools}</span></div>
                   </div>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -1440,6 +1616,239 @@ export default function CollaboratorsAdmin() {
               </div>
             </div>
           )}
+
+          {/* TAB 7: Financial Analytics */}
+          {activeTab === 'analytics' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-4 mb-6 gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 font-display">Resumo Financeiro & Balanço Patrimonial</h3>
+                  <p className="text-xs text-gray-500 mt-1">Análise consolidada do capital, faturamento, lucros e saldos de colaboradores da Code Engine.</p>
+                </div>
+                <button
+                  onClick={exportAnalyticsToCSV}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold text-sm px-6 py-2.5 shadow-sm hover:shadow transition-all"
+                >
+                  <Download size={16} /> Exportar Relatório Excel (CSV)
+                </button>
+              </div>
+
+              {analyticsSummary && (
+                <div className="space-y-6">
+                  {/* Ecosystem breakdown grids */}
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    {/* USD ECOSYSTEM CARD */}
+                    <div className="bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 p-6 shadow-lg space-y-6">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl">
+                            <DollarSign size={18} />
+                          </div>
+                          <h4 className="font-bold text-white tracking-wide uppercase text-sm">Ecossistema USD (Stripe/Internacional)</h4>
+                        </div>
+                        <span className="text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full px-2.5 py-0.5">USD</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Faturamento Total</span>
+                          <span className="text-xl font-bold text-white block mt-1 font-mono">${analyticsSummary.totalSalesUSD.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Capital / Comissão CE</span>
+                          <span className="text-xl font-bold text-green-400 block mt-1 font-mono">${analyticsSummary.totalPlatformRevenueUSD.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Pago aos Colaboradores</span>
+                          <span className="text-xl font-bold text-slate-300 block mt-1 font-mono">${analyticsSummary.totalPaidOutUSD.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Média de Ganhos/Criador</span>
+                          <span className="text-xl font-bold text-slate-300 block mt-1 font-mono">${analyticsSummary.avgEarningsUSD.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-800/25 border border-slate-800 rounded-xl p-4 space-y-3">
+                        <span className="text-xs font-bold text-white uppercase tracking-wider block">Total Devido (A Pagar): ${analyticsSummary.totalOwedUSD.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</span>
+                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                          <div className="bg-slate-800/60 p-2.5 rounded-lg">
+                            <div className="text-amber-400 font-semibold mb-0.5 flex items-center justify-center gap-1">
+                              <ShieldCheck size={12} /> Garantia
+                            </div>
+                            <div className="font-bold font-mono text-slate-200">${globalFunds?.totalGuarantee.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) || '0,00'}</div>
+                          </div>
+                          <div className="bg-slate-800/60 p-2.5 rounded-lg">
+                            <div className="text-blue-400 font-semibold mb-0.5 flex items-center justify-center gap-1">
+                              <Clock size={12} /> Proc.
+                            </div>
+                            <div className="font-bold font-mono text-slate-200">${globalFunds?.totalProcessing.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) || '0,00'}</div>
+                          </div>
+                          <div className="bg-slate-800/60 p-2.5 rounded-lg">
+                            <div className="text-green-400 font-semibold mb-0.5 flex items-center justify-center gap-1">
+                              <CheckCircle size={12} /> Disp.
+                            </div>
+                            <div className="font-bold font-mono text-slate-200">${globalFunds?.totalAvailable.toLocaleString('pt-PT', { minimumFractionDigits: 2 }) || '0,00'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* AOA ECOSYSTEM CARD */}
+                    <div className="bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 p-6 shadow-lg space-y-6">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl">
+                            <Landmark size={18} />
+                          </div>
+                          <h4 className="font-bold text-white tracking-wide uppercase text-sm">Ecossistema AOA (Angola - Kwanza)</h4>
+                        </div>
+                        <span className="text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full px-2.5 py-0.5">AOA</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Faturamento Total</span>
+                          <span className="text-xl font-bold text-white block mt-1 font-mono">{analyticsSummary.totalSalesAOA.toLocaleString('pt-AO')} Kz</span>
+                        </div>
+                        <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Capital / Comissão CE</span>
+                          <span className="text-xl font-bold text-green-400 block mt-1 font-mono">{analyticsSummary.totalPlatformRevenueAOA.toLocaleString('pt-AO')} Kz</span>
+                        </div>
+                        <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Pago aos Colaboradores</span>
+                          <span className="text-xl font-bold text-slate-300 block mt-1 font-mono">{analyticsSummary.totalPaidOutAOA.toLocaleString('pt-AO')} Kz</span>
+                        </div>
+                        <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-4">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Média de Ganhos/Criador</span>
+                          <span className="text-xl font-bold text-slate-300 block mt-1 font-mono">{analyticsSummary.avgEarningsAOA.toLocaleString('pt-AO')} Kz</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-800/25 border border-slate-800 rounded-xl p-4 space-y-3">
+                        <span className="text-xs font-bold text-white uppercase tracking-wider block">Total Devido (A Pagar): {analyticsSummary.totalOwedAOA.toLocaleString('pt-AO')} Kz</span>
+                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                          <div className="bg-slate-800/60 p-2.5 rounded-lg">
+                            <div className="text-amber-400 font-semibold mb-0.5 flex items-center justify-center gap-1">
+                              <ShieldCheck size={12} /> Garantia
+                            </div>
+                            <div className="font-bold font-mono text-slate-200">{globalFundsAoa?.totalGuarantee.toLocaleString('pt-AO') || '0'} Kz</div>
+                          </div>
+                          <div className="bg-slate-800/60 p-2.5 rounded-lg">
+                            <div className="text-blue-400 font-semibold mb-0.5 flex items-center justify-center gap-1">
+                              <Clock size={12} /> Proc.
+                            </div>
+                            <div className="font-bold font-mono text-slate-200">{globalFundsAoa?.totalProcessing.toLocaleString('pt-AO') || '0'} Kz</div>
+                          </div>
+                          <div className="bg-slate-800/60 p-2.5 rounded-lg">
+                            <div className="text-green-400 font-semibold mb-0.5 flex items-center justify-center gap-1">
+                              <CheckCircle size={12} /> Disp.
+                            </div>
+                            <div className="font-bold font-mono text-slate-200">{globalFundsAoa?.totalAvailable.toLocaleString('pt-AO') || '0'} Kz</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Collaborator details section */}
+                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div className="border-b border-gray-200 px-6 py-4">
+                      <h3 className="font-semibold text-gray-900 text-base font-display">Balanço Individual por Colaborador</h3>
+                    </div>
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold uppercase text-gray-400">
+                          <th className="px-6 py-4">Colaborador</th>
+                          <th className="px-6 py-4">Plano</th>
+                          <th className="px-6 py-4">Informação de Payout</th>
+                          <th className="px-6 py-4 text-center">Faturamento & Payout (USD)</th>
+                          <th className="px-6 py-4 text-center">Faturamento & Payout (AOA)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {analyticsCollaborators.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="text-center py-12 text-gray-400">Nenhum colaborador parceiro com dados registrados.</td>
+                          </tr>
+                        ) : (
+                          analyticsCollaborators.map((c) => (
+                            <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="font-semibold text-gray-900 text-sm">{c.display_name}</div>
+                                <div className="text-[11px] text-gray-500 mt-0.5">{c.email}</div>
+                              </td>
+                              <td className="px-6 py-4 capitalize text-[10px]">
+                                {c.plan === 'course_creator' ? (
+                                  <span className="text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full font-semibold border border-purple-100">Course Creator</span>
+                                ) : (
+                                  <span className="text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full font-semibold border border-blue-100">Ebook Creator</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-[10px] text-gray-600 max-w-xs truncate">
+                                {c.payout_method === 'paypal' && (
+                                  <div>
+                                    <span className="font-bold uppercase text-gray-400 block text-[8px]">PayPal Email</span>
+                                    <span>{c.payout_info?.email || 'N/A'}</span>
+                                  </div>
+                                )}
+                                {c.payout_method === 'iban' && (
+                                  <div>
+                                    <span className="font-bold uppercase text-gray-400 block text-[8px]">IBAN / Transferência</span>
+                                    <span className="font-mono">{c.payout_info?.bankName} - {c.payout_info?.iban}</span>
+                                  </div>
+                                )}
+                                {c.payout_method === 'facipay' && (
+                                  <div>
+                                    <span className="font-bold uppercase text-gray-400 block text-[8px]">Conta FaciPay (P2P)</span>
+                                    <span className="font-mono">{c.facipay_account || 'N/A'}</span>
+                                  </div>
+                                )}
+                                {!c.payout_method && <span className="text-gray-400">Não configurado</span>}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="grid grid-cols-2 gap-x-4 text-[10px] max-w-xs mx-auto">
+                                  <div>
+                                    <span className="text-gray-400 block text-[9px]">Acumulado:</span>
+                                    <span className="font-semibold text-gray-900 font-mono">${c.usd.accumulated_earnings.toFixed(2)}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-400 block text-[9px]">Pago/Sacado:</span>
+                                    <span className="font-semibold text-green-600 font-mono">${c.usd.withdrawn_amount.toFixed(2)}</span>
+                                  </div>
+                                  <div className="col-span-2 border-t border-gray-100 mt-1.5 pt-1 flex justify-between text-[9px] text-gray-500 gap-2">
+                                    <span>Disp: ${c.usd.available_balance.toFixed(2)}</span>
+                                    <span>Garantia: ${c.usd.guarantee_balance.toFixed(2)}</span>
+                                    <span>Proc: ${c.usd.processing_balance.toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="grid grid-cols-2 gap-x-4 text-[10px] max-w-xs mx-auto">
+                                  <div>
+                                    <span className="text-gray-400 block text-[9px]">Acumulado:</span>
+                                    <span className="font-semibold text-gray-900 font-mono">{c.aoa.accumulated_earnings.toLocaleString('pt-AO')} Kz</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-400 block text-[9px]">Pago/Sacado:</span>
+                                    <span className="font-semibold text-green-600 font-mono">{c.aoa.withdrawn_amount.toLocaleString('pt-AO')} Kz</span>
+                                  </div>
+                                  <div className="col-span-2 border-t border-gray-100 mt-1.5 pt-1 flex justify-between text-[9px] text-gray-500 gap-2">
+                                    <span>Disp: {c.aoa.available_balance.toLocaleString('pt-AO')} Kz</span>
+                                    <span>Garantia: {c.aoa.guarantee_balance.toLocaleString('pt-AO')} Kz</span>
+                                    <span>Proc: {c.aoa.processing_balance.toLocaleString('pt-AO')} Kz</span>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -1490,7 +1899,7 @@ export default function CollaboratorsAdmin() {
           <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl my-8 border border-gray-100 max-h-[90vh] overflow-y-auto">
             <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3">
               <h3 className="text-xl font-bold text-gray-900 font-display flex items-center gap-2 text-blue-600">
-                🔍 Revisão de Produto Pendente
+                <Search size={18} /> Revisão de Produto Pendente
               </h3>
               <button 
                 onClick={() => {
@@ -1530,14 +1939,14 @@ export default function CollaboratorsAdmin() {
                       onClick={() => handleDownloadCover(approveAoaModalData)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-700 shadow-sm"
                     >
-                      ⬇️ Baixar Capa
+                      <Download size={14} /> Baixar Capa
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDownloadFile(approveAoaModalData)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white shadow-sm"
                     >
-                      💾 Baixar Arquivo Principal
+                      <Save size={14} /> Baixar Arquivo Principal
                     </button>
                   </div>
                 </div>
