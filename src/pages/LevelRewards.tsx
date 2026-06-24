@@ -168,7 +168,8 @@ export default function LevelRewards() {
       } else {
         setMsg(`❌ ${data.error}`);
       }
-    } catch {
+    } catch (error) {
+      console.error('Error submitting reward:', error);
       setMsg('❌ Erro de rede');
     }
   };
@@ -205,7 +206,8 @@ export default function LevelRewards() {
       } else {
         setMsg(`❌ ${data.error}`);
       }
-    } catch {
+    } catch (error) {
+      console.error('Error deleting reward:', error);
       setMsg('❌ Erro de rede');
     }
   };
@@ -219,7 +221,9 @@ export default function LevelRewards() {
       });
       const data = await res.json();
       if (data.success) fetchRewards();
-    } catch {}
+    } catch (error) {
+      console.error('Error toggling reward active status:', error);
+    }
   };
 
   const groupedRewards = LEVELS.reduce((acc, level) => {
