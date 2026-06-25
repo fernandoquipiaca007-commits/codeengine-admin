@@ -135,10 +135,17 @@ export default function CollaboratorsAdmin() {
   // Payout scheduling state
   const [scheduleDate, setScheduleDate] = useState('');
 
-  // Collaborator Sales Viewer modal state
-  const [salesModalCollab, setSalesModalCollab] = useState<any | null>(null);
-  const [salesDetails, setSalesDetails] = useState<any>(null);
-  const [loadingSales, setLoadingSales] = useState(false);
+  // Collaborator Details modal states
+  const [detailModalCollab, setDetailModalCollab] = useState<any | null>(null);
+  const [detailTab, setDetailTab] = useState<'overview' | 'products' | 'sales' | 'affiliates' | 'founder'>('overview');
+  const [collabDetailsData, setCollabDetailsData] = useState<any | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  // States for updating plan within details view
+  const [detailPlanType, setDetailPlanType] = useState<'ebook_creator' | 'course_creator'>('ebook_creator');
+  const [detailPlanExpiry, setDetailPlanExpiry] = useState('');
+  const [detailCollabStatus, setDetailCollabStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [updatingDetailPlan, setUpdatingDetailPlan] = useState(false);
 
   // Manage Plan modal state
   const [managePlanCollab, setManagePlanCollab] = useState<any | null>(null);
@@ -362,25 +369,72 @@ export default function CollaboratorsAdmin() {
     }
   }
 
-  async function handleViewSales(collab: any) {
-    setSalesModalCollab(collab);
-    setLoadingSales(true);
-    setSalesDetails(null);
+  async function handleViewDetails(collab: any) {
+    setDetailModalCollab(collab);
+    setDetailTab('overview');
+    setLoadingDetails(true);
+    setCollabDetailsData(null);
+    setDetailPlanType(collab.plan);
+    setDetailPlanExpiry(collab.plan_expires_at ? collab.plan_expires_at.split('T')[0] : '');
+    setDetailCollabStatus(collab.status);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/${collab.id}/sales`, {
+      const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/${collab.id}/details`, {
         headers: { 'x-admin-key': ADMIN_KEY }
       });
       const data = await res.json();
       if (data.success) {
-        setSalesDetails(data);
+        setCollabDetailsData(data);
       } else {
         throw new Error(data.error);
       }
     } catch (err: any) {
-      notifyError(err.message || 'Erro ao carregar histórico de vendas.');
-      setSalesModalCollab(null);
+      notifyError(err.message || 'Erro ao carregar detalhes do colaborador.');
+      setDetailModalCollab(null);
     } finally {
-      setLoadingSales(false);
+      setLoadingDetails(false);
+    }
+  }
+
+  async function handleUpdateDetailPlanSubmit() {
+    if (!detailModalCollab) return;
+    setUpdatingDetailPlan(true);
+    try {
+      const { error } = await supabaseAdmin
+        .from('collaborators')
+        .update({
+          plan: detailPlanType,
+          plan_expires_at: detailPlanExpiry ? new Date(detailPlanExpiry).toISOString() : null,
+          status: detailCollabStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', detailModalCollab.id);
+
+      if (error) throw error;
+      notifySuccess('Plano e Status do colaborador atualizados com sucesso!');
+      
+      // Update local state in details modal
+      setDetailModalCollab((prev: any) => prev ? {
+        ...prev,
+        plan: detailPlanType,
+        plan_expires_at: detailPlanExpiry ? new Date(detailPlanExpiry).toISOString() : null,
+        status: detailCollabStatus
+      } : null);
+
+      // Reload list and details
+      void loadData();
+      
+      // Re-fetch details
+      const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/${detailModalCollab.id}/details`, {
+        headers: { 'x-admin-key': ADMIN_KEY }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCollabDetailsData(data);
+      }
+    } catch (err: any) {
+      notifyError(err.message || 'Erro ao atualizar plano.');
+    } finally {
+      setUpdatingDetailPlan(false);
     }
   }
 
@@ -1059,10 +1113,10 @@ export default function CollaboratorsAdmin() {
                           <td className="px-6 py-4 text-right">
                             <div className="flex gap-2 justify-end">
                               <button
-                                onClick={() => handleViewSales(cand)}
+                                onClick={() => handleViewDetails(cand)}
                                 className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-100 transition-all"
                               >
-                                Ver Vendas
+                                Ficha Completa
                               </button>
                               <button
                                 onClick={() => {
@@ -2219,71 +2273,507 @@ export default function CollaboratorsAdmin() {
           </div>
         </div>
       )}
-
-      {/* Modal: Collaborator Sales Viewer */}
-      {salesModalCollab && (
+      {detailModalCollab && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3">
-              <h3 className="text-lg font-bold text-gray-900 font-display">Histórico de Vendas: {salesModalCollab.display_name}</h3>
-              <button onClick={() => setSalesModalCollab(null)} className="text-gray-400 hover:text-gray-600 text-sm font-semibold">Fechar</button>
+          <div className="w-full max-w-5xl rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto flex flex-col">
+            <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <h3 className="text-xl font-bold text-gray-900 font-display">Ficha do Colaborador: {detailModalCollab.display_name}</h3>
+                <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                  detailModalCollab.status === 'approved' ? 'text-green-700 bg-green-50' :
+                  detailModalCollab.status === 'rejected' ? 'text-red-700 bg-red-50' : 'text-amber-700 bg-amber-50'
+                }`}>
+                  {detailModalCollab.status === 'approved' ? 'Aprovado' :
+                   detailModalCollab.status === 'rejected' ? 'Rejeitado' : 'Pendente'}
+                </span>
+              </div>
+              <button onClick={() => setDetailModalCollab(null)} className="text-gray-400 hover:text-gray-600 text-sm font-semibold">Fechar</button>
             </div>
-            
-            {loadingSales ? (
-              <div className="flex h-32 items-center justify-center">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+
+            {/* Modal Tabs */}
+            <div className="flex border-b border-gray-200 mb-4 flex-shrink-0">
+              <button
+                onClick={() => setDetailTab('overview')}
+                className={`py-2.5 px-4 text-sm font-bold border-b-2 transition-all ${
+                  detailTab === 'overview' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Visão Geral
+              </button>
+              <button
+                onClick={() => setDetailTab('products')}
+                className={`py-2.5 px-4 text-sm font-bold border-b-2 transition-all ${
+                  detailTab === 'products' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Produtos ({collabDetailsData?.products?.length || 0})
+              </button>
+              <button
+                onClick={() => setDetailTab('sales')}
+                className={`py-2.5 px-4 text-sm font-bold border-b-2 transition-all ${
+                  detailTab === 'sales' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Vendas ({collabDetailsData?.products ? (collabDetailsData.products.length > 0 ? 'Consultar' : '0') : '...'})
+              </button>
+              <button
+                onClick={() => setDetailTab('affiliates')}
+                className={`py-2.5 px-4 text-sm font-bold border-b-2 transition-all ${
+                  detailTab === 'affiliates' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Afiliados ({collabDetailsData?.affiliates?.links?.length || 0})
+              </button>
+              <button
+                onClick={() => setDetailTab('founder')}
+                className={`py-2.5 px-4 text-sm font-bold border-b-2 transition-all ${
+                  detailTab === 'founder' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                🏆 Membro Fundador ({collabDetailsData?.founder?.invited?.length || 0})
+              </button>
+            </div>
+
+            {loadingDetails ? (
+              <div className="flex h-64 items-center justify-center flex-grow">
+                <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent"></div>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100 text-sm">
-                  <div>
-                    <span className="block text-xs text-gray-400 font-semibold uppercase">Total Faturado</span>
-                    <span className="text-lg font-bold text-gray-800">
-                      {salesModalCollab.payout_method === 'iban'
-                        ? Number(salesDetails?.totalSalesAmount || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
-                        : Number(salesDetails?.totalSalesAmount || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-xs text-gray-400 font-semibold uppercase">Vendas Realizadas</span>
-                    <span className="text-lg font-bold text-gray-800">{salesDetails?.salesCount || 0}</span>
-                  </div>
-                </div>
+              <div className="flex-grow">
+                {/* TAB: Overview */}
+                {detailTab === 'overview' && collabDetailsData && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Left: Profile Info */}
+                    <div className="space-y-4">
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">Informações de Perfil</h4>
+                        <div className="space-y-2 text-sm text-gray-600">
+                          <div><span className="font-semibold text-gray-800">E-mail:</span> {collabDetailsData.collaborator.members?.email}</div>
+                          <div><span className="font-semibold text-gray-800">Especialidade:</span> {collabDetailsData.collaborator.specialty}</div>
+                          <div><span className="font-semibold text-gray-800">Bio:</span> {collabDetailsData.collaborator.bio || 'Sem bio informada.'}</div>
+                          <div><span className="font-semibold text-gray-800">Data de Registo:</span> {new Date(collabDetailsData.collaborator.members?.registration_date).toLocaleDateString('pt-BR')}</div>
+                          <div><span className="font-semibold text-gray-800">Plano Atual:</span> <span className="uppercase font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded text-xs">{collabDetailsData.collaborator.plan?.replace('_', ' ')}</span></div>
+                          <div><span className="font-semibold text-gray-800">Expiração:</span> {collabDetailsData.collaborator.plan_expires_at ? new Date(collabDetailsData.collaborator.plan_expires_at).toLocaleDateString('pt-BR') : 'Sem expiração (Grátis)'}</div>
+                          {collabDetailsData.collaborator.members?.referred_by && (
+                            <div className="mt-2 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+                              Este colaborador foi convidado por outro Membro Fundador.
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                <div className="border border-gray-100 rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-150 font-semibold uppercase text-gray-400">
-                        <th className="px-4 py-3">Produto</th>
-                        <th className="px-4 py-3">Comprador</th>
-                        <th className="px-4 py-3">Valor</th>
-                        <th className="px-4 py-3">Data</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {!salesDetails?.sales || salesDetails.sales.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="text-center py-6 text-gray-400">Nenhuma venda registrada ainda.</td>
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">Dados de Pagamento (Saque)</h4>
+                        <div className="space-y-2 text-sm text-gray-600">
+                          <div><span className="font-semibold text-gray-800">Método de Saque:</span> <span className="uppercase font-bold text-gray-700">{collabDetailsData.collaborator.payout_method}</span></div>
+                          {collabDetailsData.collaborator.payout_method === 'paypal' ? (
+                            <div><span className="font-semibold text-gray-800">E-mail PayPal:</span> {collabDetailsData.collaborator.payout_info?.email}</div>
+                          ) : (
+                            <>
+                              <div><span className="font-semibold text-gray-800">Banco:</span> {collabDetailsData.collaborator.payout_info?.bankName}</div>
+                              <div><span className="font-semibold text-gray-800">Conta:</span> {collabDetailsData.collaborator.payout_info?.accountNumber}</div>
+                              <div><span className="font-semibold text-gray-800">IBAN:</span> <span className="font-mono text-xs">{collabDetailsData.collaborator.payout_info?.iban}</span></div>
+                            </>
+                          )}
+                          {collabDetailsData.collaborator.facipay_account && (
+                            <div className="mt-1 pt-1 border-t border-gray-200"><span className="font-semibold text-gray-800">Conta FaciPay (AOA):</span> <span className="font-mono text-xs text-indigo-600 font-bold">{collabDetailsData.collaborator.facipay_account}</span></div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Balance & Plan Control */}
+                    <div className="space-y-4">
+                      {/* Financial Balances Card */}
+                      <div className="bg-gradient-to-br from-gray-900 to-slate-800 text-white p-5 rounded-2xl shadow-md">
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Saldos do Colaborador</h4>
+                        
+                        <div className="grid grid-cols-2 gap-4 divide-x divide-slate-700 text-sm">
+                          {/* USD Balance */}
+                          <div className="space-y-2.5">
+                            <span className="block text-xs font-bold text-blue-400 uppercase">Carteira USD</span>
+                            <div>
+                              <span className="block text-xxs text-slate-400 uppercase">Disponível</span>
+                              <span className="text-base font-bold text-blue-50">{(Number(collabDetailsData.balances.available_balance) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+                            </div>
+                            <div>
+                              <span className="block text-xxs text-slate-400 uppercase">Garantia / Em espera</span>
+                              <span className="text-xs text-slate-300">{(Number(collabDetailsData.balances.guarantee_balance) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+                            </div>
+                            <div>
+                              <span className="block text-xxs text-slate-400 uppercase">Total Ganho</span>
+                              <span className="text-xs font-semibold text-green-400">{(Number(collabDetailsData.balances.accumulated_earnings) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+                            </div>
+                          </div>
+
+                          {/* AOA Balance */}
+                          <div className="space-y-2.5 pl-4">
+                            <span className="block text-xs font-bold text-amber-400 uppercase">Carteira AOA</span>
+                            <div>
+                              <span className="block text-xxs text-slate-400 uppercase">Disponível</span>
+                              <span className="text-base font-bold text-amber-50">{(Number(collabDetailsData.balances.available_balance_aoa) || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</span>
+                            </div>
+                            <div>
+                              <span className="block text-xxs text-slate-400 uppercase">Garantia / Em espera</span>
+                              <span className="text-xs text-slate-300">{(Number(collabDetailsData.balances.guarantee_balance_aoa) || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</span>
+                            </div>
+                            <div>
+                              <span className="block text-xxs text-slate-400 uppercase">Total Ganho</span>
+                              <span className="text-xs font-semibold text-green-400">{(Number(collabDetailsData.balances.accumulated_earnings_aoa) || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Manual Plan Management Form */}
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">Gerenciamento de Conta pelo Admin</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Tipo de Plano</label>
+                            <select
+                              value={detailPlanType}
+                              onChange={(e: any) => setDetailPlanType(e.target.value)}
+                              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs focus:border-primary focus:outline-none bg-white"
+                            >
+                              <option value="ebook_creator">Ebook Creator (Grátis)</option>
+                              <option value="course_creator">Course Creator ($9/mês)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Expiração do Plano</label>
+                            <input
+                              type="date"
+                              value={detailPlanExpiry}
+                              onChange={(e) => setDetailPlanExpiry(e.target.value)}
+                              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs focus:border-primary focus:outline-none bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Status do Colaborador</label>
+                            <select
+                              value={detailCollabStatus}
+                              onChange={(e: any) => setDetailCollabStatus(e.target.value)}
+                              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs focus:border-primary focus:outline-none bg-white"
+                            >
+                              <option value="pending">Pendente de Análise</option>
+                              <option value="approved">Aprovado (Ativo)</option>
+                              <option value="rejected">Rejeitado</option>
+                            </select>
+                          </div>
+
+                          <button
+                            onClick={handleUpdateDetailPlanSubmit}
+                            disabled={updatingDetailPlan}
+                            className="w-full rounded-xl bg-blue-600 py-2.5 font-bold text-white hover:bg-blue-700 text-xs transition-colors disabled:opacity-50 mt-1"
+                          >
+                            {updatingDetailPlan ? 'Salvando...' : 'Salvar Alterações'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB: Products */}
+                {detailTab === 'products' && collabDetailsData && (
+                  <div className="border border-gray-100 rounded-xl overflow-hidden text-sm">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-150 font-bold uppercase text-gray-400">
+                          <th className="px-4 py-3">Produto</th>
+                          <th className="px-4 py-3">Preço</th>
+                          <th className="px-4 py-3">Moeda</th>
+                          <th className="px-4 py-3">Status Loja</th>
+                          <th className="px-4 py-3">Status Aprovação</th>
+                          <th className="px-4 py-3">Data Cadastro</th>
                         </tr>
-                      ) : (
-                        salesDetails.sales.map((sale: any) => (
-                          <tr key={sale.id}>
-                            <td className="px-4 py-3 font-medium text-gray-900">{sale.productTitle}</td>
-                            <td className="px-4 py-3 text-gray-500">{sale.buyerEmail}</td>
-                            <td className="px-4 py-3 font-semibold text-gray-900">
-                              {salesModalCollab.payout_method === 'iban'
-                                ? Number(sale.amountPaid).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
-                                : Number(sale.amountPaid).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                            </td>
-                            <td className="px-4 py-3 text-gray-400">
-                              {new Date(sale.purchaseDate).toLocaleDateString('pt-BR')}
-                            </td>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {collabDetailsData.products.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="text-center py-6 text-gray-400">Nenhum produto cadastrado por este colaborador.</td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                        ) : (
+                          collabDetailsData.products.map((p: any) => (
+                            <tr key={p.id} className="hover:bg-gray-50/50">
+                              <td className="px-4 py-3 font-semibold text-gray-900">{p.title}</td>
+                              <td className="px-4 py-3 font-bold text-gray-700">
+                                {p.price_currency === 'AOA'
+                                  ? Number(p.price).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
+                                  : Number(p.price).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                              </td>
+                              <td className="px-4 py-3 uppercase text-gray-400 font-semibold">{p.price_currency}</td>
+                              <td className="px-4 py-3">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                  p.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
+                                }`}>
+                                  {p.status === 'active' ? 'Ativo' : 'Inativo'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 font-semibold">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                  p.approval_status === 'approved' ? 'bg-green-50 text-green-700' :
+                                  p.approval_status === 'rejected' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
+                                }`}>
+                                  {p.approval_status === 'approved' ? 'Aprovado' :
+                                   p.approval_status === 'rejected' ? 'Rejeitado' : 'Em Análise'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-gray-400">
+                                {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* TAB: Sales */}
+                {detailTab === 'sales' && (
+                  <div className="space-y-3">
+                    <button
+                      onClick={async () => {
+                        setLoadingDetails(true);
+                        try {
+                          const res = await fetch(`${BACKEND_URL}/api/admin/collaborators/${detailModalCollab.id}/sales`, {
+                            headers: { 'x-admin-key': ADMIN_KEY }
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            setCollabDetailsData((prev: any) => ({
+                              ...prev,
+                              salesData: data
+                            }));
+                          }
+                        } catch (err: any) {
+                          notifyError('Erro ao buscar histórico de vendas.');
+                        } finally {
+                          setLoadingDetails(false);
+                        }
+                      }}
+                      className="rounded-lg bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-xs font-bold text-white transition-all"
+                    >
+                      {collabDetailsData?.salesData ? 'Recarregar Histórico de Vendas' : 'Carregar Histórico de Vendas'}
+                    </button>
+
+                    {collabDetailsData?.salesData && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100 text-sm">
+                          <div>
+                            <span className="block text-xs text-gray-400 font-semibold uppercase">Total Faturado</span>
+                            <span className="text-lg font-bold text-gray-800">
+                              {detailModalCollab.payout_method === 'iban'
+                                ? Number(collabDetailsData.salesData.totalSalesAmount || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
+                                : Number(collabDetailsData.salesData.totalSalesAmount || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-xs text-gray-400 font-semibold uppercase">Vendas Realizadas</span>
+                            <span className="text-lg font-bold text-gray-800">{collabDetailsData.salesData.salesCount || 0}</span>
+                          </div>
+                        </div>
+
+                        <div className="border border-gray-100 rounded-xl overflow-hidden">
+                          <table className="w-full text-left text-xs">
+                            <thead>
+                              <tr className="bg-gray-50 border-b border-gray-150 font-bold uppercase text-gray-400">
+                                <th className="px-4 py-3">Produto</th>
+                                <th className="px-4 py-3">Comprador</th>
+                                <th className="px-4 py-3">Valor</th>
+                                <th className="px-4 py-3">Data</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {collabDetailsData.salesData.sales.length === 0 ? (
+                                <tr>
+                                  <td colSpan={4} className="text-center py-6 text-gray-400">Nenhuma venda registrada ainda.</td>
+                                </tr>
+                              ) : (
+                                collabDetailsData.salesData.sales.map((sale: any) => (
+                                  <tr key={sale.id} className="hover:bg-gray-50/50">
+                                    <td className="px-4 py-3 font-semibold text-gray-900">{sale.productTitle}</td>
+                                    <td className="px-4 py-3 text-gray-500">{sale.buyerEmail}</td>
+                                    <td className="px-4 py-3 font-bold text-gray-900">
+                                      {detailModalCollab.payout_method === 'iban'
+                                        ? Number(sale.amountPaid).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
+                                        : Number(sale.amountPaid).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-400">
+                                      {new Date(sale.purchaseDate).toLocaleDateString('pt-BR')}
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TAB: Affiliates */}
+                {detailTab === 'affiliates' && collabDetailsData && (
+                  <div className="space-y-6">
+                    {/* Affiliate Links */}
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Afiliados Promovendo os Produtos ({collabDetailsData.affiliates.links.length})</h4>
+                      <div className="border border-gray-100 rounded-xl overflow-hidden">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="bg-gray-50 border-b border-gray-150 font-bold uppercase text-gray-400">
+                              <th className="px-4 py-3">E-mail do Afiliado</th>
+                              <th className="px-4 py-3">Produto</th>
+                              <th className="px-4 py-3">Cliques</th>
+                              <th className="px-4 py-3">Conversões</th>
+                              <th className="px-4 py-3">Parceria Desde</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {collabDetailsData.affiliates.links.length === 0 ? (
+                              <tr>
+                                <td colSpan={5} className="text-center py-6 text-gray-400">Nenhum afiliado promovendo ainda.</td>
+                              </tr>
+                            ) : (
+                              collabDetailsData.affiliates.links.map((l: any) => (
+                                <tr key={l.id} className="hover:bg-gray-50/50">
+                                  <td className="px-4 py-3 font-semibold text-gray-900">{l.affiliateEmail}</td>
+                                  <td className="px-4 py-3 text-gray-600">{l.productTitle}</td>
+                                  <td className="px-4 py-3 font-bold text-gray-700">{l.clicks || 0}</td>
+                                  <td className="px-4 py-3 font-bold text-green-600">{l.conversions || 0}</td>
+                                  <td className="px-4 py-3 text-gray-400">{new Date(l.createdAt).toLocaleDateString('pt-BR')}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Affiliate Conversions */}
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Conversões e Comissões de Afiliados ({collabDetailsData.affiliates.conversions.length})</h4>
+                      <div className="border border-gray-100 rounded-xl overflow-hidden">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="bg-gray-50 border-b border-gray-150 font-bold uppercase text-gray-400">
+                              <th className="px-4 py-3">E-mail do Afiliado</th>
+                              <th className="px-4 py-3">Produto</th>
+                              <th className="px-4 py-3">Comissão Afiliado</th>
+                              <th className="px-4 py-3">Status Comissão</th>
+                              <th className="px-4 py-3">Data Venda</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {collabDetailsData.affiliates.conversions.length === 0 ? (
+                              <tr>
+                                <td colSpan={5} className="text-center py-6 text-gray-400">Nenhuma conversão registrada ainda.</td>
+                              </tr>
+                            ) : (
+                              collabDetailsData.affiliates.conversions.map((c: any) => (
+                                <tr key={c.id} className="hover:bg-gray-50/50">
+                                  <td className="px-4 py-3 font-semibold text-gray-900">{c.affiliateEmail}</td>
+                                  <td className="px-4 py-3 text-gray-600">{c.productTitle}</td>
+                                  <td className="px-4 py-3 font-bold text-violet-600">
+                                    {c.currency === 'AOA'
+                                      ? Number(c.commissionAoa).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
+                                      : Number(c.commissionUsd).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                                  </td>
+                                  <td className="px-4 py-3 uppercase">
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                      c.status === 'paid' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+                                    }`}>
+                                      {c.status === 'paid' ? 'Pago' : 'Pendente'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-gray-400">{new Date(c.createdAt).toLocaleDateString('pt-BR')}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB: Founder Member referrals */}
+                {detailTab === 'founder' && collabDetailsData && (
+                  <div className="space-y-6">
+                    {/* General Referral Statistics Card */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <span className="block text-xxs text-gray-400 uppercase font-bold">Membros Convidados</span>
+                        <span className="text-xl font-bold text-gray-800">{collabDetailsData.founder.stats.total_invited_members || 0}</span>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <span className="block text-xxs text-gray-400 uppercase font-bold">Colaboradores Convertidos</span>
+                        <span className="text-xl font-bold text-gray-800">{collabDetailsData.founder.stats.total_invited_collaborators || 0}</span>
+                      </div>
+                      <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                        <span className="block text-xxs text-blue-500 uppercase font-bold">Comissões Recebidas (USD)</span>
+                        <span className="text-xl font-bold text-blue-700">
+                          {(Number(collabDetailsData.founder.stats.total_earned_usd) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                        </span>
+                      </div>
+                      <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                        <span className="block text-xxs text-amber-600 uppercase font-bold">Comissões Recebidas (AOA)</span>
+                        <span className="text-xl font-bold text-amber-700">
+                          {(Number(collabDetailsData.founder.stats.total_earned_aoa) || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Table of referrals */}
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Utilizadores Convidados Diretamente ({collabDetailsData.founder.invited.length})</h4>
+                      <div className="border border-gray-100 rounded-xl overflow-hidden">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="bg-gray-50 border-b border-gray-150 font-bold uppercase text-gray-400">
+                              <th className="px-4 py-3">E-mail do Convidado</th>
+                              <th className="px-4 py-3">Data de Registo</th>
+                              <th className="px-4 py-3">Estado na Plataforma</th>
+                              <th className="px-4 py-3">Plano de Criador</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {collabDetailsData.founder.invited.length === 0 ? (
+                              <tr>
+                                <td colSpan={4} className="text-center py-6 text-gray-400">Nenhum utilizador registado através deste fundador.</td>
+                              </tr>
+                            ) : (
+                              collabDetailsData.founder.invited.map((inv: any) => (
+                                <tr key={inv.id} className="hover:bg-gray-50/50">
+                                  <td className="px-4 py-3 font-semibold text-gray-900">{inv.email}</td>
+                                  <td className="px-4 py-3 text-gray-400">{new Date(inv.registrationDate).toLocaleDateString('pt-BR')}</td>
+                                  <td className="px-4 py-3">
+                                    {inv.collaboratorStatus === 'none' ? (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-50 text-gray-500 uppercase">Membro Comum</span>
+                                    ) : (
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                        inv.collaboratorStatus === 'approved' ? 'bg-green-50 text-green-700' :
+                                        inv.collaboratorStatus === 'rejected' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
+                                      }`}>
+                                        Criador ({inv.collaboratorStatus})
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 uppercase font-bold text-gray-500">
+                                    {inv.collaboratorPlan === 'none' ? '-' : inv.collaboratorPlan?.replace('_', ' ')}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
