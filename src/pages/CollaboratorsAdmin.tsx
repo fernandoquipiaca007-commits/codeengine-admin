@@ -2385,45 +2385,52 @@ export default function CollaboratorsAdmin() {
                     {/* Right: Balance & Plan Control */}
                     <div className="space-y-4">
                       {/* Financial Balances Card */}
-                      <div className="bg-gradient-to-br from-gray-900 to-slate-800 text-white p-5 rounded-2xl shadow-md">
-                        <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Saldos do Colaborador</h4>
-                        
-                        <div className="grid grid-cols-2 gap-4 divide-x divide-slate-700 text-sm">
-                          {/* USD Balance */}
-                          <div className="space-y-2.5">
-                            <span className="block text-xs font-bold text-blue-400 uppercase">Carteira USD</span>
-                            <div>
-                              <span className="block text-xxs text-slate-400 uppercase">Disponível</span>
-                              <span className="text-base font-bold text-blue-50">{(Number(collabDetailsData.balances.available_balance) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
-                            </div>
-                            <div>
-                              <span className="block text-xxs text-slate-400 uppercase">Garantia / Em espera</span>
-                              <span className="text-xs text-slate-300">{(Number(collabDetailsData.balances.guarantee_balance) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
-                            </div>
-                            <div>
-                              <span className="block text-xxs text-slate-400 uppercase">Total Ganho</span>
-                              <span className="text-xs font-semibold text-green-400">{(Number(collabDetailsData.balances.accumulated_earnings) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
-                            </div>
-                          </div>
+                      {(() => {
+                        const isCollabAngola = collabDetailsData?.collaborator?.members?.profile_data?.country === 'AO';
+                        return (
+                          <div className="bg-gradient-to-br from-gray-900 to-slate-800 text-white p-5 rounded-2xl shadow-md">
+                            <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Saldos do Colaborador</h4>
+                            
+                            <div className={`grid ${isCollabAngola ? 'grid-cols-2 divide-x divide-slate-700' : 'grid-cols-1'} gap-4 text-sm`}>
+                              {/* USD Balance */}
+                              <div className="space-y-2.5">
+                                <span className="block text-xs font-bold text-blue-400 uppercase">Carteira USD</span>
+                                <div>
+                                  <span className="block text-xxs text-slate-400 uppercase">Disponível</span>
+                                  <span className="text-base font-bold text-blue-50">{(Number(collabDetailsData.balances.available_balance) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+                                </div>
+                                <div>
+                                  <span className="block text-xxs text-slate-400 uppercase">Garantia / Em espera</span>
+                                  <span className="text-xs text-slate-300">{(Number(collabDetailsData.balances.guarantee_balance) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+                                </div>
+                                <div>
+                                  <span className="block text-xxs text-slate-400 uppercase">Total Ganho</span>
+                                  <span className="text-xs font-semibold text-green-400">{(Number(collabDetailsData.balances.accumulated_earnings) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+                                </div>
+                              </div>
 
-                          {/* AOA Balance */}
-                          <div className="space-y-2.5 pl-4">
-                            <span className="block text-xs font-bold text-amber-400 uppercase">Carteira AOA</span>
-                            <div>
-                              <span className="block text-xxs text-slate-400 uppercase">Disponível</span>
-                              <span className="text-base font-bold text-amber-50">{(Number(collabDetailsData.balances.available_balance_aoa) || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</span>
-                            </div>
-                            <div>
-                              <span className="block text-xxs text-slate-400 uppercase">Garantia / Em espera</span>
-                              <span className="text-xs text-slate-300">{(Number(collabDetailsData.balances.guarantee_balance_aoa) || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</span>
-                            </div>
-                            <div>
-                              <span className="block text-xxs text-slate-400 uppercase">Total Ganho</span>
-                              <span className="text-xs font-semibold text-green-400">{(Number(collabDetailsData.balances.accumulated_earnings_aoa) || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</span>
+                              {/* AOA Balance */}
+                              {isCollabAngola && (
+                                <div className="space-y-2.5 pl-4 animate-in fade-in slide-in-from-left-2 duration-200">
+                                  <span className="block text-xs font-bold text-amber-400 uppercase">Carteira AOA</span>
+                                  <div>
+                                    <span className="block text-xxs text-slate-400 uppercase">Disponível</span>
+                                    <span className="text-base font-bold text-amber-50">{(Number(collabDetailsData.balances.available_balance_aoa) || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-xxs text-slate-400 uppercase">Garantia / Em espera</span>
+                                    <span className="text-xs text-slate-300">{(Number(collabDetailsData.balances.guarantee_balance_aoa) || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-xxs text-slate-400 uppercase">Total Ganho</span>
+                                    <span className="text-xs font-semibold text-green-400">{(Number(collabDetailsData.balances.accumulated_earnings_aoa) || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}</span>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      </div>
+                        );
+                      })()}
 
                       {/* Manual Plan Management Form */}
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">

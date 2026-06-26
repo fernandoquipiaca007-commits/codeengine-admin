@@ -95,6 +95,44 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
   const [tagInput, setTagInput] = useState('');
   const [activeLang, setActiveLang] = useState<AppLocale>('pt');
   const [subcategories, setSubcategories] = useState<any[]>([]);
+  const [isCollabAngola, setIsCollabAngola] = useState(true);
+
+  // Check product owner's country code to conditionally hide Kwanza pricing
+  useEffect(() => {
+    async function checkOwnerCountry() {
+      if (!product?.id) {
+        setIsCollabAngola(true);
+        return;
+      }
+      try {
+        const { data: prodData } = await supabaseAdmin
+          .from('products')
+          .select('collaborator_id')
+          .eq('id', product.id)
+          .single();
+
+        if (prodData?.collaborator_id) {
+          const { data: collabData } = await supabaseAdmin
+            .from('collaborators')
+            .select('members(profile_data)')
+            .eq('id', prodData.collaborator_id)
+            .single();
+
+          const profileData = (collabData as any)?.members?.profile_data;
+          if (profileData && profileData.country && profileData.country !== 'AO') {
+            setIsCollabAngola(false);
+            return;
+          }
+        }
+        setIsCollabAngola(true);
+      } catch (err) {
+        console.error('Error fetching product owner country:', err);
+        setIsCollabAngola(true);
+      }
+    }
+
+    void checkOwnerCountry();
+  }, [product?.id]);
 
   // Load subcategories dynamically
   useEffect(() => {
@@ -224,7 +262,11 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 
     setLoading(true);
     try {
-      await onSubmit(formData);
+      const finalData = {
+        ...formData,
+        aoa_price: isCollabAngola ? formData.aoa_price : 0
+      };
+      await onSubmit(finalData);
     } catch (error) {
       console.error('Error submitting form:', error);
       setErrors({ submit: 'Falha ao salvar produto. Tente novamente.' });
@@ -430,7 +472,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
 
           {/* Preço em Kwanza (AOA) */}
-          {!formData.is_free && (
+          {!formData.is_free && isCollabAngola && (
             <div className="mt-4">
               <label htmlFor="aoa_price" className="block text-sm font-medium text-gray-700">
                 Preço em Kwanza (AOA)
