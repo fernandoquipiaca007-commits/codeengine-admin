@@ -42,6 +42,10 @@ export interface ProductFormData {
   use_shared_content?: boolean;
   aoa_price?: number;
   subcategory_id?: string;
+  base_price?: number;
+  base_currency?: 'USD' | 'AOA';
+  converted_price?: number;
+  exchange_rate_used?: number;
 }
 
 export default function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
@@ -68,6 +72,10 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     use_shared_content: (product as any)?.use_shared_content ?? false,
     aoa_price: (product as any)?.aoa_price || 0,
     subcategory_id: (product as any)?.subcategory_id || '',
+    base_currency: (product as any)?.base_currency || (((product as any)?.aoa_price && (product as any)?.aoa_price > 0) ? 'AOA' : 'USD'),
+    base_price: (product as any)?.base_price || (((product as any)?.base_currency === 'AOA' || (!(product as any)?.base_currency && (product as any)?.aoa_price && (product as any)?.aoa_price > 0)) ? ((product as any)?.aoa_price || 0) : (product?.price || 0)),
+    converted_price: (product as any)?.converted_price || ((product as any)?.base_currency === 'AOA' ? (product?.price || 0) : ((product as any)?.aoa_price || 0)),
+    exchange_rate_used: (product as any)?.exchange_rate_used || 920,
     enabledLanguages: ['pt', 'en', 'fr'] as AppLocale[],
     cover_url: product?.cover_url || '',
     preview_url: product?.preview_url || '',
@@ -133,6 +141,66 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 
     void checkOwnerCountry();
   }, [product?.id]);
+
+  // Currency Conversion logic
+  const [usdToAoaRate, setUsdToAoaRate] = useState<number>(920);
+  const [loadingRate, setLoadingRate] = useState<boolean>(false);
+
+  useEffect(() => {
+    async function fetchExchangeRate() {
+      setLoadingRate(true);
+      try {
+        const cached = localStorage.getItem('codeengine_usd_aoa_rate');
+        if (cached) {
+          setUsdToAoaRate(Number(cached));
+        }
+        
+        const res = await fetch('https://latest.currency-api.pages.dev/v1/currencies/usd.json');
+        if (!res.ok) throw new Error('API response not ok');
+        const data = await res.json();
+        const rate = data.usd?.aoa;
+        if (rate && !isNaN(rate) && rate > 0) {
+          setUsdToAoaRate(rate);
+          localStorage.setItem('codeengine_usd_aoa_rate', String(rate));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch latest exchange rate in admin ProductForm:', err);
+      } finally {
+        setLoadingRate(false);
+      }
+    }
+    fetchExchangeRate();
+  }, []);
+
+  function syncAdminPrices(val: number, currency: 'USD' | 'AOA', rate = usdToAoaRate) {
+    if (formData.is_free) return;
+    
+    if (currency === 'USD') {
+      const priceVal = val;
+      const aoaVal = Math.round(val * rate);
+      setFormData(prev => ({
+        ...prev,
+        base_price: val,
+        base_currency: 'USD',
+        price: priceVal,
+        aoa_price: aoaVal,
+        converted_price: aoaVal,
+        exchange_rate_used: rate
+      }));
+    } else {
+      const aoaVal = val;
+      const priceVal = parseFloat((val / rate).toFixed(2)) || 0;
+      setFormData(prev => ({
+        ...prev,
+        base_price: val,
+        base_currency: 'AOA',
+        price: priceVal,
+        aoa_price: aoaVal,
+        converted_price: priceVal,
+        exchange_rate_used: rate
+      }));
+    }
+  }
 
   // Load subcategories dynamically
   useEffect(() => {
@@ -448,46 +516,144 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
         </div>
 
         <div>
-          <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-            Preço ($) {!formData.is_free && '*'}
-          </label>
-          <input
-            type="number"
-            id="price"
-            step="0.01"
-            min="0"
-            value={formData.is_free ? 0 : (formData.price === 0 ? '' : formData.price)}
-            disabled={formData.is_free}
-            onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-            className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm disabled:bg-gray-100 disabled:text-gray-500 ${
-              errors.price
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
-            }`}
-            placeholder="0.00"
-          />
+          {isCollabAngola ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Base Currency Selection */}
+                <div>
+                  <label htmlFor="base_currency" className="block text-sm font-medium text-gray-700">
+                    Moeda Base <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="base_currency"
+                    value={formData.base_currency || 'USD'}
+                    disabled={formData.is_free}
+                    onChange={(e) => {
+                      const newCurr = e.target.value as 'USD' | 'AOA';
+                      setFormData(prev => ({ ...prev, base_currency: newCurr }));
+                      syncAdminPrices(formData.base_price || 0, newCurr);
+                    }}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                  >
+                    <option value="USD">USD ($ - Dólar)</option>
+                    <option value="AOA">AOA (Kz - Kwanza)</option>
+                  </select>
+                </div>
+
+                {/* Base Price Input */}
+                <div>
+                  <label htmlFor="base_price" className="block text-sm font-medium text-gray-700">
+                    Preço Principal ({formData.base_currency || 'USD'}) <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative mt-1 rounded-md shadow-sm">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <span className="text-gray-500 sm:text-sm">
+                        {formData.base_currency === 'USD' ? '$' : 'Kz'}
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      id="base_price"
+                      step={formData.base_currency === 'USD' ? '0.01' : '1'}
+                      min="0"
+                      value={formData.is_free ? 0 : (formData.base_price === 0 ? '' : formData.base_price)}
+                      disabled={formData.is_free}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        syncAdminPrices(val, formData.base_currency || 'USD');
+                      }}
+                      className={`block w-full rounded-md pl-10 pr-3 py-2 border sm:text-sm disabled:bg-gray-100 disabled:text-gray-500 ${
+                        errors.price
+                          ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
+                      }`}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Converted Price (Read-only) */}
+              {!formData.is_free && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">
+                    Preço Convertido ({formData.base_currency === 'USD' ? 'AOA' : 'USD'})
+                  </label>
+                  <div className="relative mt-1 rounded-md shadow-sm">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <span className="text-gray-400 sm:text-sm">
+                        {formData.base_currency === 'USD' ? 'Kz' : '$'}
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      readOnly
+                      value={
+                        formData.base_currency === 'USD'
+                          ? formData.aoa_price
+                            ? Number(formData.aoa_price).toLocaleString('pt-AO')
+                            : '0'
+                          : formData.price
+                          ? Number(formData.price).toFixed(2)
+                          : '0.00'
+                      }
+                      className="block w-full rounded-md pl-10 pr-3 py-2 border border-gray-200 bg-gray-50 text-gray-500 sm:text-sm cursor-not-allowed"
+                    />
+                  </div>
+                  <p className="mt-1 text-[10px] text-gray-400">
+                    Taxa de câmbio usada: {loadingRate ? 'Carregando...' : `1 USD = ${usdToAoaRate.toFixed(2)} AOA (autoatualizado via API)`}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label htmlFor="price" className="block text-sm font-medium text-gray-700">
+                Preço em USD ($) <span className="text-red-500">*</span>
+              </label>
+              <div className="relative mt-1 rounded-md shadow-sm">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <span className="text-gray-500 sm:text-sm">$</span>
+                </div>
+                <input
+                  type="number"
+                  id="price"
+                  step="0.01"
+                  min="0"
+                  value={formData.is_free ? 0 : (formData.price === 0 ? '' : formData.price)}
+                  disabled={formData.is_free}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 0;
+                    setFormData(prev => ({
+                      ...prev,
+                      price: val,
+                      base_price: val,
+                      base_currency: 'USD',
+                      aoa_price: 0,
+                      converted_price: 0,
+                      exchange_rate_used: usdToAoaRate
+                    }));
+                  }}
+                  className={`block w-full rounded-md pl-8 pr-3 py-2 border sm:text-sm disabled:bg-gray-100 disabled:text-gray-500 ${
+                    errors.price
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
+                  }`}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+          )}
+
           {formData.is_free && (
             <p className="mt-1 text-xs text-gray-500">Preço desativado para produtos gratuitos.</p>
           )}
-          {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
-
-          {/* Preço em Kwanza (AOA) */}
-          {!formData.is_free && isCollabAngola && (
-            <div className="mt-4">
-              <label htmlFor="aoa_price" className="block text-sm font-medium text-gray-700">
-                Preço em Kwanza (AOA)
-              </label>
-              <input
-                type="number"
-                id="aoa_price"
-                min="0"
-                value={formData.aoa_price || ''}
-                onChange={(e) => setFormData({ ...formData, aoa_price: parseFloat(e.target.value) || 0 })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                placeholder="Ex: 50000"
-              />
-            </div>
+          {!formData.is_free && (!formData.price || formData.price <= 0) && (
+            <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+              ⚠️ Preço em USD é obrigatório para todos os colaboradores.
+            </p>
           )}
+          {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
         </div>
       </div>
 
