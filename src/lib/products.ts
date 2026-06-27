@@ -124,6 +124,10 @@ export async function createProduct(formData: ProductFormData): Promise<CreatePr
         min_member_level: formData.min_member_level || null,
         access_duration_days: formData.access_duration_days || null,
         use_shared_content: formData.use_shared_content ?? false,
+        codeengine_recommended: formData.codeengine_recommended ?? false,
+        editor_choice: formData.editor_choice ?? false,
+        featured_pick: formData.featured_pick ?? false,
+        is_bestseller: formData.is_bestseller ?? false,
       })
       .select()
       .single();
@@ -316,6 +320,10 @@ export async function updateProduct(
         min_member_level: formData.min_member_level || null,
         access_duration_days: formData.access_duration_days || null,
         use_shared_content: formData.use_shared_content ?? false,
+        codeengine_recommended: formData.codeengine_recommended ?? false,
+        editor_choice: formData.editor_choice ?? false,
+        featured_pick: formData.featured_pick ?? false,
+        is_bestseller: formData.is_bestseller ?? false,
       })
       .eq('id', productId)
       .select()

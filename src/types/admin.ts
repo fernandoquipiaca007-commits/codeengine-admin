@@ -30,6 +30,10 @@ export interface Product {
   min_member_level?: string | null;
   access_duration_days?: number | null;
   use_shared_content?: boolean;
+  codeengine_recommended?: boolean;
+  editor_choice?: boolean;
+  featured_pick?: boolean;
+  is_bestseller?: boolean;
   created_at: string;
   updated_at: string;
 }

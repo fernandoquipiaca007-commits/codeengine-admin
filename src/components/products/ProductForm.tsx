@@ -46,6 +46,10 @@ export interface ProductFormData {
   base_currency?: 'USD' | 'AOA';
   converted_price?: number;
   exchange_rate_used?: number;
+  codeengine_recommended?: boolean;
+  editor_choice?: boolean;
+  featured_pick?: boolean;
+  is_bestseller?: boolean;
 }
 
 export default function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
@@ -76,6 +80,10 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     base_price: (product as any)?.base_price || (((product as any)?.base_currency === 'AOA' || (!(product as any)?.base_currency && (product as any)?.aoa_price && (product as any)?.aoa_price > 0)) ? ((product as any)?.aoa_price || 0) : (product?.price || 0)),
     converted_price: (product as any)?.converted_price || ((product as any)?.base_currency === 'AOA' ? (product?.price || 0) : ((product as any)?.aoa_price || 0)),
     exchange_rate_used: (product as any)?.exchange_rate_used || 920,
+    codeengine_recommended: (product as any)?.codeengine_recommended ?? false,
+    editor_choice: (product as any)?.editor_choice ?? false,
+    featured_pick: (product as any)?.featured_pick ?? false,
+    is_bestseller: (product as any)?.is_bestseller ?? false,
     enabledLanguages: ['pt', 'en', 'fr'] as AppLocale[],
     cover_url: product?.cover_url || '',
     preview_url: product?.preview_url || '',
@@ -1170,6 +1178,61 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             }
           />
           Modo curso (múltiplas aulas)
+        </label>
+      </div>
+
+      <div className="flex flex-wrap gap-6 p-4 bg-gray-50 rounded-lg border mt-4">
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <input
+            type="checkbox"
+            checked={formData.codeengine_recommended}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                codeengine_recommended: e.target.checked,
+              })
+            }
+          />
+          Recomendado pela CodeEngine
+        </label>
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <input
+            type="checkbox"
+            checked={formData.editor_choice}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                editor_choice: e.target.checked,
+              })
+            }
+          />
+          Escolha do Editor
+        </label>
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <input
+            type="checkbox"
+            checked={formData.featured_pick}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                featured_pick: e.target.checked,
+              })
+            }
+          />
+          Destaque Especial
+        </label>
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <input
+            type="checkbox"
+            checked={formData.is_bestseller}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                is_bestseller: e.target.checked,
+              })
+            }
+          />
+          Mais Vendido (Bestseller)
         </label>
       </div>
 
