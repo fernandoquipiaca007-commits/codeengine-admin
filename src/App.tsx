@@ -22,6 +22,7 @@ import { Members } from './pages/Members';
 import Media from './pages/Media';
 import CollaboratorsAdmin from './pages/CollaboratorsAdmin';
 import AffiliatesAdmin from './pages/AffiliatesAdmin';
+import AdsAdmin from './pages/AdsAdmin';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
@@ -191,6 +192,15 @@ function App() {
                         element={
                           <ProtectedRoute requirePermission="can_access_analytics">
                             <AffiliatesAdmin />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="/ads"
+                        element={
+                          <ProtectedRoute requirePermission="can_access_analytics">
+                            <AdsAdmin />
                           </ProtectedRoute>
                         }
                       />
