@@ -2708,79 +2708,84 @@ export default function CollaboratorsAdmin() {
                 )}
 
                 {/* TAB: Founder Member referrals */}
-                {detailTab === 'founder' && collabDetailsData && (
-                  <div className="space-y-6">
-                    {/* General Referral Statistics Card */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                        <span className="block text-xxs text-gray-400 uppercase font-bold">Membros Convidados</span>
-                        <span className="text-xl font-bold text-gray-800">{collabDetailsData.founder.stats.total_invited_members || 0}</span>
+                {detailTab === 'founder' && collabDetailsData && (() => {
+                  const isCollabAngola = collabDetailsData?.collaborator?.members?.profile_data?.country === 'AO';
+                  return (
+                    <div className="space-y-6">
+                      {/* General Referral Statistics Card */}
+                      <div className={`grid grid-cols-2 ${isCollabAngola ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                          <span className="block text-xxs text-gray-400 uppercase font-bold">Membros Convidados</span>
+                          <span className="text-xl font-bold text-gray-800">{collabDetailsData.founder.stats.total_invited_members || 0}</span>
+                        </div>
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                          <span className="block text-xxs text-gray-400 uppercase font-bold">Colaboradores Convertidos</span>
+                          <span className="text-xl font-bold text-gray-800">{collabDetailsData.founder.stats.total_invited_collaborators || 0}</span>
+                        </div>
+                        <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                          <span className="block text-xxs text-blue-500 uppercase font-bold">Comissões Recebidas (USD)</span>
+                          <span className="text-xl font-bold text-blue-700">
+                            {(Number(collabDetailsData.founder.stats.total_earned_usd) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                          </span>
+                        </div>
+                        {isCollabAngola && (
+                          <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                            <span className="block text-xxs text-amber-600 uppercase font-bold">Comissões Recebidas (AOA)</span>
+                            <span className="text-xl font-bold text-amber-700">
+                              {(Number(collabDetailsData.founder.stats.total_earned_aoa) || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                        <span className="block text-xxs text-gray-400 uppercase font-bold">Colaboradores Convertidos</span>
-                        <span className="text-xl font-bold text-gray-800">{collabDetailsData.founder.stats.total_invited_collaborators || 0}</span>
-                      </div>
-                      <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                        <span className="block text-xxs text-blue-500 uppercase font-bold">Comissões Recebidas (USD)</span>
-                        <span className="text-xl font-bold text-blue-700">
-                          {(Number(collabDetailsData.founder.stats.total_earned_usd) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                        </span>
-                      </div>
-                      <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
-                        <span className="block text-xxs text-amber-600 uppercase font-bold">Comissões Recebidas (AOA)</span>
-                        <span className="text-xl font-bold text-amber-700">
-                          {(Number(collabDetailsData.founder.stats.total_earned_aoa) || 0).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
-                        </span>
-                      </div>
-                    </div>
 
-                    {/* Table of referrals */}
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Utilizadores Convidados Diretamente ({collabDetailsData.founder.invited.length})</h4>
-                      <div className="border border-gray-100 rounded-xl overflow-hidden">
-                        <table className="w-full text-left text-xs">
-                          <thead>
-                            <tr className="bg-gray-50 border-b border-gray-150 font-bold uppercase text-gray-400">
-                              <th className="px-4 py-3">E-mail do Convidado</th>
-                              <th className="px-4 py-3">Data de Registo</th>
-                              <th className="px-4 py-3">Estado na Plataforma</th>
-                              <th className="px-4 py-3">Plano de Criador</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {collabDetailsData.founder.invited.length === 0 ? (
-                              <tr>
-                                <td colSpan={4} className="text-center py-6 text-gray-400">Nenhum utilizador registado através deste fundador.</td>
+                      {/* Table of referrals */}
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Utilizadores Convidados Diretamente ({collabDetailsData.founder.invited.length})</h4>
+                        <div className="border border-gray-100 rounded-xl overflow-hidden">
+                          <table className="w-full text-left text-xs">
+                            <thead>
+                              <tr className="bg-gray-50 border-b border-gray-150 font-bold uppercase text-gray-400">
+                                <th className="px-4 py-3">E-mail do Convidado</th>
+                                <th className="px-4 py-3">Data de Registo</th>
+                                <th className="px-4 py-3">Estado na Plataforma</th>
+                                <th className="px-4 py-3">Plano de Criador</th>
                               </tr>
-                            ) : (
-                              collabDetailsData.founder.invited.map((inv: any) => (
-                                <tr key={inv.id} className="hover:bg-gray-50/50">
-                                  <td className="px-4 py-3 font-semibold text-gray-900">{inv.email}</td>
-                                  <td className="px-4 py-3 text-gray-400">{new Date(inv.registrationDate).toLocaleDateString('pt-BR')}</td>
-                                  <td className="px-4 py-3">
-                                    {inv.collaboratorStatus === 'none' ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-50 text-gray-500 uppercase">Membro Comum</span>
-                                    ) : (
-                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                        inv.collaboratorStatus === 'approved' ? 'bg-green-50 text-green-700' :
-                                        inv.collaboratorStatus === 'rejected' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
-                                      }`}>
-                                        Criador ({inv.collaboratorStatus})
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-3 uppercase font-bold text-gray-500">
-                                    {inv.collaboratorPlan === 'none' ? '-' : inv.collaboratorPlan?.replace('_', ' ')}
-                                  </td>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {collabDetailsData.founder.invited.length === 0 ? (
+                                <tr>
+                                  <td colSpan={4} className="text-center py-6 text-gray-400">Nenhum utilizador registado através deste fundador.</td>
                                 </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
+                              ) : (
+                                collabDetailsData.founder.invited.map((inv: any) => (
+                                  <tr key={inv.id} className="hover:bg-gray-50/50">
+                                    <td className="px-4 py-3 font-semibold text-gray-900">{inv.email}</td>
+                                    <td className="px-4 py-3 text-gray-400">{new Date(inv.registrationDate).toLocaleDateString('pt-BR')}</td>
+                                    <td className="px-4 py-3">
+                                      {inv.collaboratorStatus === 'none' ? (
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-50 text-gray-500 uppercase">Membro Comum</span>
+                                      ) : (
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                          inv.collaboratorStatus === 'approved' ? 'bg-green-50 text-green-700' :
+                                          inv.collaboratorStatus === 'rejected' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
+                                        }`}>
+                                          Criador ({inv.collaboratorStatus})
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 uppercase font-bold text-gray-500">
+                                      {inv.collaboratorPlan === 'none' ? '-' : inv.collaboratorPlan?.replace('_', ' ')}
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             )}
           </div>

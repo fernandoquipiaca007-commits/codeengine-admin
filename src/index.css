@@ -155,3 +155,133 @@ body {
     @apply overflow-x-hidden break-words;
   }
 }
+
+/* ==========================================================================
+   GLOBAL ADMIN DARK THEME OVERRIDES (ARCA DARK THEME)
+   Forces clean contrast, readable typography, and dark cards on all pages.
+   ========================================================================== */
+
+/* 1. Body & Page backgrounds */
+body {
+  background-color: #06070a !important;
+  color: #f1f5f9 !important;
+}
+
+/* 2. Overriding light card/modal backgrounds */
+.bg-white, 
+div[class*="bg-white"],
+div[class*="bg-slate-50"],
+div[class*="bg-gray-50"],
+.bg-gray-50,
+.bg-slate-50 {
+  background-color: #0c0e17 !important; /* Premium dark background */
+}
+
+/* Modal backgrounds */
+.fixed.inset-0.bg-black\/40 + div,
+.fixed.inset-0 + div.bg-white,
+div[class*="max-w-md"].bg-white,
+div[class*="max-w-lg"].bg-white,
+div[class*="max-w-xl"].bg-white,
+div[class*="max-w-2xl"].bg-white {
+  background-color: #0e111c !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 3. High-Contrast Text Color overrides - Resolving blurriness ("Letras Foscas") */
+.text-gray-900,
+.text-slate-900,
+.text-gray-800,
+.text-slate-800,
+h1, h2, h3, h4, h5, h6 {
+  color: #ffffff !important; /* Pure sharp white for readability */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* Subtle depth */
+}
+
+.text-gray-700,
+.text-slate-700,
+.text-gray-600,
+.text-slate-600 {
+  color: #e2e8f0 !important; /* Very clear slate grey-white */
+}
+
+.text-gray-500,
+.text-slate-500,
+.text-gray-400,
+.text-slate-400 {
+  color: #94a3b8 !important; /* Muted but sharp text */
+}
+
+/* 4. Borders & Dividers */
+.border,
+.border-t,
+.border-b,
+.border-l,
+.border-r,
+.border-gray-100,
+.border-gray-200,
+.border-gray-300,
+.border-slate-200,
+.divide-y > *,
+.divide-x > * {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 5. Inputs, Selects, Textareas - Ensuring crisp text and dark fields */
+input, 
+select, 
+textarea,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[class*="bg-white"] {
+  background-color: #131722 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+input:focus, 
+select:focus, 
+textarea:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25) !important;
+}
+
+input::placeholder, 
+textarea::placeholder {
+  color: #4b5563 !important;
+}
+
+/* 6. Form helper labels */
+label {
+  color: #cbd5e1 !important;
+  font-weight: 600 !important;
+}
+
+/* 7. Hover effects & Tables */
+.hover\:bg-gray-50:hover,
+.hover\:bg-slate-50:hover,
+tr:hover {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+thead, 
+thead tr, 
+thead th,
+.bg-gray-50 {
+  background-color: #08090f !important;
+}
+
+/* 8. Specific components fix: featured products and sidebar headers */
+.bg-indigo-600,
+.bg-indigo-700,
+.bg-blue-600 {
+  background-color: #4f46e5 !important; /* Keep primary buttons indigo */
+}
+
+.text-indigo-600,
+.text-blue-600 {
+  color: #818cf8 !important; /* Make blue/indigo text lighter to shine on dark bg */
+}
