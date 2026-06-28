@@ -40,7 +40,7 @@ function App() {
             path="/*"
             element={
               <ProtectedRoute>
-                <div className="flex h-screen flex-col bg-gray-50 overflow-x-hidden">
+                <div className="flex h-screen flex-col bg-[#06070a] text-slate-100 overflow-x-hidden">
                   <ConnectionBanner />
                   <div className="flex flex-1 min-h-0 overflow-hidden">
                   <Sidebar />
