@@ -285,3 +285,67 @@ thead th,
 .text-blue-600 {
   color: #818cf8 !important; /* Make blue/indigo text lighter to shine on dark bg */
 }
+
+/* ==========================================================================
+   FORCE LIGHT CARD GRADIENTS TO DARK GRAPHICS
+   ========================================================================== */
+.from-blue-50, 
+div[class*="from-blue-50"], 
+span[class*="from-blue-50"] {
+  --tw-gradient-from: #0f172a !important;
+  --tw-gradient-to: #0b0f19 !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+  background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)) !important;
+}
+.from-orange-50, 
+div[class*="from-orange-50"], 
+span[class*="from-orange-50"] {
+  --tw-gradient-from: #1e110a !important;
+  --tw-gradient-to: #0b0f19 !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+  background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)) !important;
+}
+.from-green-50, 
+div[class*="from-green-50"], 
+span[class*="from-green-50"] {
+  --tw-gradient-from: #061a10 !important;
+  --tw-gradient-to: #0b0f19 !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+  background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)) !important;
+}
+.from-purple-50, 
+div[class*="from-purple-50"], 
+span[class*="from-purple-50"] {
+  --tw-gradient-from: #180d2b !important;
+  --tw-gradient-to: #0b0f19 !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+  background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)) !important;
+}
+.to-white, 
+div[class*="to-white"], 
+span[class*="to-white"] {
+  --tw-gradient-to: #0b0f19 !important;
+}
+
+/* Ensure text on light cards gets high-contrast light colors */
+.text-blue-900 { color: #93c5fd !important; }
+.text-orange-900 { color: #fdba74 !important; }
+.text-green-900 { color: #86efac !important; }
+.text-purple-900 { color: #d8b4fe !important; }
+.text-blue-800 { color: #60a5fa !important; }
+.text-orange-800 { color: #fb923c !important; }
+.text-green-800 { color: #4ade80 !important; }
+.text-purple-800 { color: #c084fc !important; }
+
+/* Force light bg utility classes to be dark */
+.bg-blue-50 { background-color: #0d1527 !important; }
+.bg-orange-50 { background-color: #1a0e08 !important; }
+.bg-green-50 { background-color: #05140b !important; }
+.bg-purple-50 { background-color: #120921 !important; }
+
+/* Border color fixes for light cards */
+.border-blue-100 { border-color: rgba(59, 130, 246, 0.15) !important; }
+.border-orange-100 { border-color: rgba(249, 115, 22, 0.15) !important; }
+.border-green-100 { border-color: rgba(34, 197, 94, 0.15) !important; }
+.border-purple-100 { border-color: rgba(168, 85, 247, 0.15) !important; }
+

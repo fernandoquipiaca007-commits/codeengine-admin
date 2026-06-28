@@ -24,6 +24,7 @@ import CollaboratorsAdmin from './pages/CollaboratorsAdmin';
 import AffiliatesAdmin from './pages/AffiliatesAdmin';
 import AdsAdmin from './pages/AdsAdmin';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { AdminNotificationWatcher } from './components/AdminNotificationWatcher';
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <div className="flex h-screen flex-col bg-[#06070a] text-slate-100 overflow-x-hidden">
+                  <AdminNotificationWatcher />
                   <ConnectionBanner />
                   <div className="flex flex-1 min-h-0 overflow-hidden">
                   <Sidebar />

@@ -55,6 +55,7 @@ interface Withdrawal {
   id: string;
   collaborator_id: string;
   amount: number;
+  currency?: string;
   status: 'pending' | 'processing' | 'completed' | 'rejected';
   payout_method_details: any;
   processed_at: string | null;
@@ -1270,7 +1271,8 @@ export default function CollaboratorsAdmin() {
           {activeTab === 'withdrawals' && (
             <div className="space-y-6">
 
-              {/*                 <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl border border-slate-700 p-5">
+              {globalFunds && (
+                <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl border border-slate-700 p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-1.5">
                       <DollarSign size={16} className="text-blue-400" /> Ecossistema USD · Fundos na Plataforma
@@ -1322,6 +1324,7 @@ export default function CollaboratorsAdmin() {
                       <div className="text-lg font-bold text-white font-mono">
                         Kz {(globalFundsAoa.totalGuarantee || 0).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}
                       </div>
+                      <p className="text-[10px] text-slate-400 mt-1">Período de reembolso activo</p>
                     </div>
                     <div className="bg-blue-500/10 border border-blue-500/25 rounded-xl p-4 text-center">
                       <div className="flex justify-center text-blue-400 mb-2"><Clock size={20} /></div>
@@ -1329,6 +1332,7 @@ export default function CollaboratorsAdmin() {
                       <div className="text-lg font-bold text-white font-mono">
                         Kz {(globalFundsAoa.totalProcessing || 0).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}
                       </div>
+                      <p className="text-[10px] text-slate-400 mt-1">A liquidar pela plataforma</p>
                     </div>
                     <div className="bg-green-500/10 border border-green-500/25 rounded-xl p-4 text-center">
                       <div className="flex justify-center text-green-400 mb-2"><CheckCircle size={20} /></div>
@@ -1336,6 +1340,7 @@ export default function CollaboratorsAdmin() {
                       <div className="text-lg font-bold text-white font-mono">
                         Kz {(globalFundsAoa.totalAvailable || 0).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}
                       </div>
+                      <p className="text-[10px] text-slate-400 mt-1">Passível de saque</p>
                     </div>
                   </div>
                 </div>
@@ -1366,7 +1371,7 @@ export default function CollaboratorsAdmin() {
                           <div className="text-xs text-gray-400 capitalize">{String(w.collaborators?.plan || '').replace('_', ' ')}</div>
                         </td>
                         <td className="px-6 py-4 font-bold text-gray-900">
-                          {w.collaborators?.payout_method === 'iban' 
+                          {w.currency === 'AOA' || (!w.currency && w.collaborators?.payout_method === 'iban')
                             ? Number(w.amount).toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
                             : Number(w.amount).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                         </td>
