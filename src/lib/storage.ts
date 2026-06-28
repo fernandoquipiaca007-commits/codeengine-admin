@@ -127,7 +127,7 @@ export function validateFile(file: File, bucket: StorageBucket): { valid: boolea
   return { valid: true };
 }
 
-// Upload file to Supabase Storage
+// Upload file to Storage (Supabase for avatars/system, Cloudflare R2 for products & receipts)
 // ALWAYS returns the storage path (not full URL)
 export async function uploadFile(
   bucketName: string,
@@ -148,7 +148,62 @@ export async function uploadFile(
     throw new Error(validation.error);
   }
 
-  // Upload file
+  const r2Buckets = ['product-covers', 'product-previews', 'product-videos', 'ebooks-private', 'fastpay-proofs'];
+
+  if (r2Buckets.includes(bucketName)) {
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || window.location.origin.replace(':5173', ':3041').replace(':3000', ':3041');
+
+      const presignedRes = await fetch(`${BACKEND_URL}/api/admin/storage/presigned-upload`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': import.meta.env.VITE_ADMIN_API_KEY || '',
+        },
+        body: JSON.stringify({
+          bucketName,
+          filePath,
+          contentType: file.type || resolveMimeType(file)
+        })
+      });
+
+      if (!presignedRes.ok) {
+        const errData = await presignedRes.json().catch(() => ({}));
+        throw new Error(errData.error || `Erro de assinatura de upload (${presignedRes.status})`);
+      }
+
+      const { uploadUrl, dbPath } = await presignedRes.json();
+
+      if (!uploadUrl) {
+        throw new Error('Pre-signed URL não retornada pelo servidor.');
+      }
+
+      // PUT the file directly to the returned uploadUrl using fetch with Content-Type matching file.type
+      const contentType = file.type || resolveMimeType(file);
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': contentType,
+        },
+        body: file
+      });
+
+      if (!putRes.ok) {
+        throw new Error(`R2 upload failed with status ${putRes.status}: ${putRes.statusText}`);
+      }
+
+      if (_onProgress) {
+        _onProgress(100);
+      }
+
+      return dbPath;
+    } catch (r2Err: any) {
+      console.error('R2 upload failed:', r2Err);
+      throw new Error(`Erro no R2: ${r2Err.message}`);
+    }
+  }
+
+  // Upload file to Supabase (Fallback for avatars)
   const { data, error } = await supabaseAdmin.storage
     .from(bucketName)
     .upload(filePath, file, {
@@ -177,6 +232,12 @@ export async function uploadFile(
 
 // Generate public URL from storage path
 export function generatePublicUrl(bucketName: string, storagePath: string): string {
+  if (storagePath.startsWith('r2://')) {
+    const cleanPath = storagePath.replace(/^r2:\/\//, '');
+    const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-c54d043e644fcfd77ca7c0307a26917b.r2.dev';
+    return `${r2PublicUrl}/${cleanPath}`;
+  }
+
   const { data } = supabaseAdmin.storage
     .from(bucketName)
     .getPublicUrl(storagePath);
@@ -190,6 +251,33 @@ export async function generateSignedUrl(
   storagePath: string,
   expiresIn: number = 3600
 ): Promise<string> {
+  if (storagePath.startsWith('r2://')) {
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || window.location.origin.replace(':5173', ':3041').replace(':3000', ':3041');
+      const adminApiKey = import.meta.env.VITE_ADMIN_API_KEY || '';
+
+      const res = await fetch(`${BACKEND_URL}/api/admin/storage/presigned-get`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': adminApiKey,
+        },
+        body: JSON.stringify({
+          r2Path: storagePath,
+          expiresIn
+        })
+      });
+      if (!res.ok) {
+        throw new Error('Falha ao gerar link assinado do R2');
+      }
+      const data = await res.json();
+      return data.signedUrl;
+    } catch (r2Err: any) {
+      console.error('Error generating R2 signed URL:', r2Err);
+      throw new Error(`Erro ao gerar URL assinado do R2: ${r2Err.message}`);
+    }
+  }
+
   const { data, error } = await supabaseAdmin.storage
     .from(bucketName)
     .createSignedUrl(storagePath, expiresIn);
@@ -208,6 +296,16 @@ export async function getStorageUrl(bucketName: string, storagePath: string): Pr
   
   if (!bucketConfig) {
     throw new Error(`Bucket desconhecido: ${bucketName}`);
+  }
+
+  if (storagePath.startsWith('r2://')) {
+    if (bucketConfig.public) {
+      const R2_PUBLIC_URL = import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-c54d043e644fcfd77ca7c0307a26917b.r2.dev';
+      return `${R2_PUBLIC_URL}/${storagePath.replace('r2://', '')}`;
+    } else {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+      return `${BACKEND_URL}/api/downloads/${storagePath.replace('r2://', '').split('/').pop()}`;
+    }
   }
 
   if (bucketConfig.public) {
