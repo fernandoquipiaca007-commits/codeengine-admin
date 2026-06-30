@@ -4,9 +4,6 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-pr
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key-to-prevent-startup-crash';
 const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
-// Force Vite to recompile this file and read the new .env.local variables
-console.log('[supabase] Init clients with service key length:', supabaseServiceRoleKey ? supabaseServiceRoleKey.length : 0);
-
 if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
   console.warn(
     '⚠️ WARNING: VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables are missing! ' +
@@ -46,6 +43,7 @@ let dataClientInstance: SupabaseClient | null = null;
 
 /**
  * Singleton for authentication ONLY (anon key + session persistence).
+ * This client is intended for user-facing authentication operations.
  */
 export function getAuthClient(): SupabaseClient {
   if (!authClientInstance) {
@@ -56,7 +54,9 @@ export function getAuthClient(): SupabaseClient {
 
 /**
  * Singleton for database/storage operations (service role when available).
- * Never use .auth on this client.
+ * This client handles data access and storage, using the service role key
+ * if available to bypass RLS for administrative tasks.
+ * Never use .auth on this client to avoid session leakage.
  */
 export function getDataClient(): SupabaseClient {
   if (!dataClientInstance) {
@@ -135,12 +135,11 @@ export async function checkConnection(): Promise<boolean> {
 }
 
 export function handleSupabaseError(error: unknown, context: string): never {
-  const message =
-    error && typeof error === 'object' && 'message' in error
-      ? String((error as { message: string }).message)
-      : 'Unknown error';
+  // Log the detailed error for administrative/debugging purposes
   console.error(`[supabase] ${context}:`, error);
-  throw new Error(`${context}: ${message}`);
+
+  // Throw a generic error message to avoid leaking technical details to the client
+  throw new Error('An error occurred while processing your request. Please try again later.');
 }
 
 export type { SupabaseClient };
