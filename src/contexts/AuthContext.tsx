@@ -45,10 +45,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const dataClient = getDataClient();
 
   async function loadAdminUser(authUserId: string, force = false) {
-    console.log('[auth] loadAdminUser called', { authUserId, force, loadingAdminRef: loadingAdminRef.current, loadedUserId: loadedUserIdRef.current });
     if (loadingAdminRef.current) return;
     if (!force && loadedUserIdRef.current === authUserId) {
-      console.log('[auth] already loaded, skipping');
       setLoading(false);
       return;
     }
@@ -56,7 +54,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadingAdminRef.current = true;
 
     try {
-      console.log('[auth] fetching admin_users for', authUserId);
       const { data, error } = await dataClient
         .from('admin_users')
         .select('*')
@@ -64,8 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('active', true)
         .single();
       
-      console.log('[auth] fetch result:', { data, error });
-
       if (error) {
         console.error('[auth] Error loading admin user:', error);
         setAdminUser(null);
@@ -113,10 +108,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = authClient.auth.onAuthStateChange(async (event: AuthChangeEvent, session) => {
       if (!mounted) return;
 
-      if (import.meta.env.DEV) {
-        console.log('[auth] state change:', event);
-      }
-
       setUser(session?.user ?? null);
 
       if (event === 'TOKEN_REFRESHED' && session?.user) {
@@ -124,13 +115,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (session?.user) {
-        console.log('[auth] onAuthStateChange user active, event:', event);
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED') {
           setLoading(true);
           await loadAdminUser(session.user.id);
         }
       } else {
-        console.log('[auth] onAuthStateChange no user, event:', event);
         setAdminUser(null);
         loadedUserIdRef.current = null;
         setLoading(false);
