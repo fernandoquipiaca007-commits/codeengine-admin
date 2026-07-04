@@ -73,7 +73,7 @@ export default function LevelRewards() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [headers]);
 
   const fetchClaims = useCallback(async () => {
     setClaimsLoading(true);
@@ -86,7 +86,7 @@ export default function LevelRewards() {
     } finally {
       setClaimsLoading(false);
     }
-  }, []);
+  }, [headers]);
 
   const handleToggleClaimUsed = async (claimId: string, currentStatus: boolean) => {
     try {
@@ -219,7 +219,9 @@ export default function LevelRewards() {
       });
       const data = await res.json();
       if (data.success) fetchRewards();
-    } catch {}
+    } catch (err) {
+      console.error('[LevelRewards] Error toggling active status:', err);
+    }
   };
 
   const groupedRewards = LEVELS.reduce((acc, level) => {

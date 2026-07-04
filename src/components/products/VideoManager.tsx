@@ -29,7 +29,9 @@ function extractGoogleDriveId(url: string): string | null {
     // Already an embed/preview URL
     const previewMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)\/preview/);
     if (previewMatch) return previewMatch[1];
-  } catch {}
+  } catch (err) {
+    console.error('[VideoManager] Error extracting Google Drive ID:', err);
+  }
   return null;
 }
 
