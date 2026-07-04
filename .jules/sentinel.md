@@ -1,0 +1,4 @@
+## 2025-05-22 - Enforcing RLS and Removing Service Role Key
+**Vulnerability:** The `VITE_SUPABASE_SERVICE_ROLE_KEY` was being imported and used in the frontend `src/lib/supabase-admin.ts` to create a `dataClient` that bypassed Row Level Security (RLS).
+**Learning:** Hardcoded or environment-variable-driven admin keys are often accidentally included in client-side code when sharing logic between frontend and backend. Vite environment variables prefixed with `VITE_` are automatically bundled into the client-side code, making them visible to anyone inspecting the browser bundle.
+**Prevention:** Never prefix sensitive keys with `VITE_` if they are intended to remain private/server-side. Always enforce RLS on the client side using the anonymous key and an authenticated session. If administrative actions are needed, they should be performed via a secure backend API that uses the service role key, rather than exposing the key to the browser.
