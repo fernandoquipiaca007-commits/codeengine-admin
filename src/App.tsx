@@ -23,6 +23,7 @@ import Media from './pages/Media';
 import CollaboratorsAdmin from './pages/CollaboratorsAdmin';
 import AffiliatesAdmin from './pages/AffiliatesAdmin';
 import AdsAdmin from './pages/AdsAdmin';
+import Communities from './pages/Communities';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AdminNotificationWatcher } from './components/AdminNotificationWatcher';
 
@@ -203,6 +204,15 @@ function App() {
                         element={
                           <ProtectedRoute requirePermission="can_access_analytics">
                             <AdsAdmin />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="/communities"
+                        element={
+                          <ProtectedRoute requirePermission="can_edit_products">
+                            <Communities />
                           </ProtectedRoute>
                         }
                       />
