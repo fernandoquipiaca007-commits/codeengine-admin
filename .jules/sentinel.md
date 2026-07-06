@@ -1,0 +1,4 @@
+## 2025-07-06 - Exposed Supabase Service Role Key in Frontend
+**Vulnerability:** The `VITE_SUPABASE_SERVICE_ROLE_KEY` was defined in the environment variables and used to initialize a Supabase client in the frontend code. This bypasses Row Level Security (RLS) and gives administrative access to anyone who inspects the browser bundle.
+**Learning:** Hardcoded or environment-variable-driven admin keys are often accidentally included in client-side code when sharing logic between frontend and backend; always enforce RLS on the client side using the anonymous key.
+**Prevention:** Never use the `VITE_` prefix for sensitive server-side keys in Vite projects, as they are automatically bundled into the client-side code. Remove any references to the service role key from frontend code and enforce RLS on the database level.
