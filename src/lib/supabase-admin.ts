@@ -2,10 +2,6 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key-to-prevent-startup-crash';
-const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-
-// Force Vite to recompile this file and read the new .env.local variables
-console.log('[supabase] Init clients with service key length:', supabaseServiceRoleKey ? supabaseServiceRoleKey.length : 0);
 
 if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
   console.warn(
@@ -13,19 +9,6 @@ if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KE
     'The admin panel will load but database operations will fail until these are configured in Vercel settings.'
   );
 }
-
-if (!supabaseServiceRoleKey) {
-  console.warn(
-    '[supabase] VITE_SUPABASE_SERVICE_ROLE_KEY missing — admin data ops use anon client with user session'
-  );
-}
-
-/** Isolated storage so service-role client never reads/writes auth tokens */
-const noopAuthStorage = {
-  getItem: () => null,
-  setItem: () => {},
-  removeItem: () => {},
-};
 
 const authClientOptions = {
   auth: {
@@ -42,10 +25,10 @@ const authClientOptions = {
 };
 
 let authClientInstance: SupabaseClient | null = null;
-let dataClientInstance: SupabaseClient | null = null;
 
 /**
  * Singleton for authentication ONLY (anon key + session persistence).
+ * This client is used for login/logout and session management.
  */
 export function getAuthClient(): SupabaseClient {
   if (!authClientInstance) {
@@ -55,30 +38,12 @@ export function getAuthClient(): SupabaseClient {
 }
 
 /**
- * Singleton for database/storage operations (service role when available).
- * Never use .auth on this client.
+ * Singleton for database/storage operations.
+ * It uses the authenticated 'anon' client to ensure Row Level Security (RLS) is enforced.
+ * The service role key should NEVER be used in the frontend.
  */
 export function getDataClient(): SupabaseClient {
-  if (!dataClientInstance) {
-    if (supabaseServiceRoleKey) {
-      dataClientInstance = createClient(supabaseUrl, supabaseServiceRoleKey, {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-          storage: noopAuthStorage,
-          storageKey: 'codeengine-admin-service-inert',
-        },
-        global: {
-          headers: {
-            'x-client-info': 'codeengine-admin-data',
-          },
-        },
-      });
-    } else {
-      dataClientInstance = getAuthClient();
-    }
-  }
-  return dataClientInstance;
+  return getAuthClient();
 }
 
 /** @deprecated Use getAuthClient() for auth and getDataClient() for queries */
@@ -135,12 +100,11 @@ export async function checkConnection(): Promise<boolean> {
 }
 
 export function handleSupabaseError(error: unknown, context: string): never {
-  const message =
-    error && typeof error === 'object' && 'message' in error
-      ? String((error as { message: string }).message)
-      : 'Unknown error';
+  // Log the detailed error for administrators/developers in the console
   console.error(`[supabase] ${context}:`, error);
-  throw new Error(`${context}: ${message}`);
+
+  // Throw a generic message to the user to prevent technical information leakage
+  throw new Error('An error occurred while processing your request. Please try again later.');
 }
 
 export type { SupabaseClient };
