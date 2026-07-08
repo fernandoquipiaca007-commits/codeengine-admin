@@ -927,7 +927,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               required={!product && activeLang === 'pt'}
               currentFile={(activeLang === 'pt' ? formData.cover_url : formData.translations[activeLang]?.cover_url) || undefined}
               bucketName="product-covers"
-              onUrlUpload={(url, _path) => {
+              onUrlUpload={(url) => {
                 if (activeLang === 'pt') {
                   setFormData({ ...formData, cover_url: url, cover_file: undefined });
                 } else {
@@ -992,7 +992,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               maxSize={10 * 1024 * 1024}
               currentFile={(activeLang === 'pt' ? formData.preview_url : formData.translations[activeLang]?.preview_url) || undefined}
               bucketName="product-previews"
-              onUrlUpload={(url, _path) => {
+              onUrlUpload={(url) => {
                 if (activeLang === 'pt') {
                   setFormData({ ...formData, preview_url: url, preview_file: undefined });
                 } else {
@@ -1057,7 +1057,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               maxSize={100 * 1024 * 1024}
               currentFile={formData.video_url || undefined}
               bucketName="product-videos"
-              onUrlUpload={(url, _path) => setFormData({ ...formData, video_url: url, video_file: undefined })}
+              onUrlUpload={(url) => setFormData({ ...formData, video_url: url, video_file: undefined })}
               onFileSelect={(file) => setFormData({ ...formData, video_file: file })}
               onClearCurrent={() => {
                 setFormData({ ...formData, video_url: '', video_file: undefined });

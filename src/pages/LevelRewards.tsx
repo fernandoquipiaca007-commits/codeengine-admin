@@ -219,7 +219,7 @@ export default function LevelRewards() {
       });
       const data = await res.json();
       if (data.success) fetchRewards();
-    } catch {}
+    } catch (err) { console.error(err); }
   };
 
   const groupedRewards = LEVELS.reduce((acc, level) => {
