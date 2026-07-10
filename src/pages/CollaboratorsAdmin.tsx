@@ -974,7 +974,13 @@ export default function CollaboratorsAdmin() {
               {/* Section 1: Pending Candidates */}
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                 <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900 text-base">Candidatos Aguardando Moderação</h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-semibold text-gray-900 text-base">Registo de Criadores</h3>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 border border-green-200 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                      <CheckCircle size={12} /> Aprovação Automática Activa
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-400">O sistema aprova criadores automaticamente no registo</span>
                 </div>
                 <table className="w-full text-left text-sm">
                   <thead>
@@ -1076,6 +1082,7 @@ export default function CollaboratorsAdmin() {
                     <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold uppercase text-gray-400">
                       <th className="px-6 py-4">Nome & Contato</th>
                       <th className="px-6 py-4">Plano</th>
+                      <th className="px-6 py-4">Data de Adesão</th>
                       <th className="px-6 py-4">Expira em</th>
                       <th className="px-6 py-4">Payout Esperado</th>
                       <th className="px-6 py-4 text-right">Ações</th>
@@ -1084,7 +1091,7 @@ export default function CollaboratorsAdmin() {
                   <tbody className="divide-y divide-gray-100">
                     {candidates.filter(c => c.status === 'approved').length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center py-12 text-gray-400">Nenhum colaborador parceiro ativo no momento.</td>
+                        <td colSpan={6} className="text-center py-12 text-gray-400">Nenhum colaborador parceiro ativo no momento.</td>
                       </tr>
                     ) : (
                       candidates.filter(c => c.status === 'approved').map((cand) => (
@@ -1099,6 +1106,9 @@ export default function CollaboratorsAdmin() {
                             ) : (
                               <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Ebook Creator</span>
                             )}
+                          </td>
+                          <td className="px-6 py-4 text-xs text-gray-500">
+                            {cand.created_at ? new Date(cand.created_at).toLocaleDateString('pt-BR') : '—'}
                           </td>
                           <td className="px-6 py-4 text-xs text-gray-500">
                             {cand.plan_expires_at ? new Date(cand.plan_expires_at).toLocaleDateString('pt-BR') : 'Sem expiração (Grátis)'}
