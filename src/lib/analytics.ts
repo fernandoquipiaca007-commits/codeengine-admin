@@ -85,6 +85,7 @@ export async function fetchAdminAnalytics(): Promise<AdminAnalyticsSnapshot> {
       `
       )
       .gte('purchase_date', monthStart)
+      .eq('payment_status', 'completed')
       .order('purchase_date', { ascending: false }),
     supabaseAdmin.from('members').select('id', { count: 'exact', head: true }),
     supabaseAdmin.from('products').select('id', { count: 'exact', head: true }),
@@ -121,11 +122,7 @@ export async function fetchAdminAnalytics(): Promise<AdminAnalyticsSnapshot> {
   const completed = purchases.map((p: any) => ({
     ...p,
     isAoa: typeof p.transaction_id === 'string' && p.transaction_id.startsWith('fastpay_')
-  })).filter((p) =>
-    p.payment_status === 'completed' ||
-    p.access_type === 'free' ||
-    p.access_type === 'paid'
-  );
+  })).filter((p) => p.payment_status === 'completed');
 
   const completedUsd = completed.filter(p => !p.isAoa);
   const completedAoa = completed.filter(p => p.isAoa);
