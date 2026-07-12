@@ -25,8 +25,15 @@ interface SettingsState {
   forgot_password: { email_enabled: boolean; email_provider: 'n8n' | 'resend' };
 }
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+}
+
 export default function PushNotifications() {
-  const [activeTab, setActiveTab] = useState<'send' | 'settings'>('send');
+  const [activeTab, setActiveTab] = useState<'send' | 'settings' | 'browser'>('send');
   
   // Tab 1: Manual Push State
   const [type, setType] = useState<PushType>('announcement');
@@ -55,9 +62,130 @@ export default function PushNotifications() {
   const [testingResend, setTestingResend] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
 
+  // Tab 3: Admin Browser Alerts & Storage stats
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [storageStats, setStorageStats] = useState<any>(null);
+  const [loadingStorage, setLoadingStorage] = useState(false);
+
   useEffect(() => {
     void loadSettings();
+    void checkSubscription();
+    void loadStorageStats();
   }, []);
+
+  async function checkSubscription() {
+    if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
+    try {
+      const reg = await navigator.serviceWorker.getRegistration('/sw-admin.js');
+      if (!reg) {
+        setIsSubscribed(false);
+        return;
+      }
+      const sub = await reg.pushManager.getSubscription();
+      setIsSubscribed(!!sub);
+    } catch (e) {
+      console.warn('Error checking SW subscription:', e);
+    }
+  }
+
+  async function loadStorageStats() {
+    setLoadingStorage(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/storage/stats`, {
+        headers: {
+          'x-admin-key': ADMIN_KEY,
+        }
+      });
+      if (!res.ok) throw new Error('Falha ao buscar dados de armazenamento');
+      const data = await res.json();
+      setStorageStats(data);
+    } catch (e) {
+      console.error('Error loading storage stats:', e);
+    } finally {
+      setLoadingStorage(false);
+    }
+  }
+
+  async function handleSubscribeAdmin() {
+    if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+      alert('Seu navegador não suporta notificações push.');
+      return;
+    }
+
+    setSubscribing(true);
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        alert('Permissão de notificação negada.');
+        return;
+      }
+
+      const reg = await navigator.serviceWorker.register('/sw-admin.js');
+      console.log('SW-Admin registrado:', reg);
+
+      const keyRes = await fetch(`${BACKEND_URL}/api/push/vapid-public-key`);
+      if (!keyRes.ok) throw new Error('Não foi possível obter chave VAPID');
+      const { publicKey } = await keyRes.json();
+
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+
+      const { data: { session } } = await supabaseAdmin.auth.getSession();
+      const token = session?.access_token;
+      
+      const res = await fetch(`${BACKEND_URL}/api/push/subscribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          subscription: sub.toJSON(),
+          browser: navigator.userAgent.slice(0, 100),
+          language: 'pt',
+          device_id: 'admin-browser',
+        }),
+      });
+
+      if (!res.ok) throw new Error('Falha ao salvar inscrição no servidor');
+      
+      setIsSubscribed(true);
+      alert('🔔 Navegador inscrito com sucesso para receber alertas do Admin!');
+    } catch (err: any) {
+      console.error(err);
+      alert('❌ Falha ao inscrever navegador:\n\n' + err.message);
+    } finally {
+      setSubscribing(false);
+    }
+  }
+
+  async function handleUnsubscribeAdmin() {
+    setSubscribing(true);
+    try {
+      const reg = await navigator.serviceWorker.getRegistration('/sw-admin.js');
+      if (!reg) return;
+      
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await fetch(`${BACKEND_URL}/api/push/unsubscribe`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: sub.endpoint }),
+        });
+        await sub.unsubscribe();
+      }
+      setIsSubscribed(false);
+      alert('🔕 Navegador desinscrito com sucesso.');
+    } catch (err: any) {
+      console.error(err);
+      alert('❌ Erro ao desinscrever:\n\n' + err.message);
+    } finally {
+      setSubscribing(false);
+    }
+  }
 
   async function loadSettings() {
     setLoadingSettings(true);
@@ -292,6 +420,17 @@ export default function PushNotifications() {
         >
           <SettingsIcon className="w-4 h-4" />
           Canais e Provedores
+        </button>
+        <button
+          onClick={() => setActiveTab('browser')}
+          className={`pb-4 text-sm font-semibold border-b-2 px-2 transition-all flex items-center gap-2 ${
+            activeTab === 'browser'
+              ? 'border-indigo-500 text-white'
+              : 'border-transparent text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          <ServerIcon className="w-4 h-4" />
+          Alertas do Admin
         </button>
       </div>
 
@@ -758,6 +897,135 @@ export default function PushNotifications() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Tab Content: Admin Browser Alerts & Storage stats */}
+      {activeTab === 'browser' && (
+        <div className="space-y-8 max-w-4xl">
+          {/* Card 1: Push Registration */}
+          <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 md:p-8 shadow-xl space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <BellIcon className="w-5 h-5 text-indigo-400" />
+                Receber Alertas Administrativos neste Navegador
+              </h2>
+              <p className="text-gray-400 text-xs sm:text-sm">
+                Ao ativar, você receberá notificações push do sistema operacional sempre que novos usuários se registrarem ou o limite de armazenamento (1 GB) for atingido.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-4 bg-gray-900/40 p-5 rounded-xl border border-gray-700/60">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isSubscribed ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
+                <BellIcon className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <div className="text-sm font-semibold text-white">
+                  Status: {isSubscribed ? 'Inscrito (Alertas Ativos)' : 'Não Inscrito (Alertas Desativados)'}
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  {isSubscribed 
+                    ? 'Este navegador está recebendo notificações administrativas em tempo real.' 
+                    : 'Inscreva seu navegador para ser notificado de eventos importantes da plataforma.'}
+                </div>
+              </div>
+              <div>
+                {isSubscribed ? (
+                  <button
+                    onClick={handleUnsubscribeAdmin}
+                    disabled={subscribing}
+                    className="bg-red-950 hover:bg-red-900 border border-red-500/30 text-red-300 font-semibold px-4 py-2 rounded-lg text-sm transition-all disabled:opacity-50"
+                  >
+                    Desinscrever Navegador
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSubscribeAdmin}
+                    disabled={subscribing}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-all hover:shadow-[0_0_15px_rgba(99,102,241,0.25)] disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {subscribing && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                    Inscrever este Navegador
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Disk & Storage Monitor */}
+          <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 md:p-8 shadow-xl space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                  <ServerIcon className="w-5 h-5 text-indigo-400" />
+                  Monitor do Armazenamento (Limite: 1.0 GB)
+                </h2>
+                <p className="text-gray-400 text-xs sm:text-sm">
+                  Acompanhe o tamanho total de arquivos hospedados no Supabase Storage. O sistema alertará automaticamente ao atingir 1.0 GB.
+                </p>
+              </div>
+              <button
+                onClick={loadStorageStats}
+                disabled={loadingStorage}
+                className="bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600 font-semibold px-3 py-1.5 rounded-lg text-xs transition-all disabled:opacity-50"
+              >
+                {loadingStorage ? 'Atualizando...' : 'Recarregar'}
+              </button>
+            </div>
+
+            {loadingStorage ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-gray-400 text-sm">Calculando tamanho total de arquivos...</p>
+              </div>
+            ) : storageStats ? (
+              <div className="space-y-6">
+                {/* Progress bar container */}
+                <div className="bg-gray-900/50 p-6 rounded-xl border border-gray-700/60">
+                  <div className="flex justify-between items-end mb-2">
+                    <div>
+                      <span className="text-2xl font-extrabold text-white">
+                        {storageStats.totalGB ? storageStats.totalGB.toFixed(3) : '0.000'} GB
+                      </span>
+                      <span className="text-gray-500 text-xs ml-1">usados de 1.0 GB</span>
+                    </div>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${storageStats.totalGB >= 1.0 ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'}`}>
+                      {storageStats.totalGB >= 1.0 ? '⚠️ Limite Excedido' : '✓ Normal'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-700 h-3.5 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${storageStats.totalGB >= 1.0 ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gradient-to-r from-indigo-500 to-indigo-600'}`}
+                      style={{ width: `${Math.min((storageStats.totalGB || 0) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Bucket Breakdown List */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-white">Detalhamento por Bucket:</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {storageStats.stats?.map((bucket: any) => {
+                      const sizeMB = Number(bucket.total_size_bytes || 0) / (1024 * 1024);
+                      return (
+                        <div key={bucket.bucket_id} className="bg-gray-900/25 p-4 rounded-xl border border-gray-700/50 flex flex-col justify-between">
+                          <span className="text-sm font-bold text-gray-200 truncate">{bucket.bucket_id}</span>
+                          <div className="flex justify-between items-center mt-2">
+                            <span className="text-xs text-gray-500">{bucket.file_count} arquivos</span>
+                            <span className="text-sm font-semibold text-indigo-400">{sizeMB.toFixed(1)} MB</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500 text-sm">
+                Nenhum dado de armazenamento disponível. Clique em recarregar.
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
