@@ -56,7 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadingAdminRef.current = true;
 
     try {
-      console.log('[auth] fetching admin_users for', authUserId);
       const { data, error } = await dataClient
         .from('admin_users')
         .select('*')
@@ -64,8 +63,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('active', true)
         .single();
       
-      console.log('[auth] fetch result:', { data, error });
-
       if (error) {
         console.error('[auth] Error loading admin user:', error);
         setAdminUser(null);
