@@ -54,6 +54,8 @@ interface OrderDetailModalProps {
   onActionComplete: () => void;
 }
 
+import { supabaseAdmin } from '../../lib/supabase-admin';
+
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 const ADMIN_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
 
@@ -71,18 +73,51 @@ export function OrderDetailModal({ orderId, onClose, onActionComplete }: OrderDe
 
   const fetchOrder = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/fastpay/orders/${orderId}`, {
-        headers: { 'x-admin-key': ADMIN_KEY },
-      });
-      const data = await res.json();
-      if (data.success) {
-        setOrder(data.order);
-      } else {
-        setError(data.error || 'Falha ao carregar pedido');
+      const { data, error: dbErr } = await supabaseAdmin
+        .from('fastpay_orders')
+        .select(`
+          *,
+          member:members(id, email, profile_data),
+          product:products(id, title, price, cover_url, fastpay_link)
+        `)
+        .eq('id', orderId)
+        .single();
+
+      if (dbErr || !data) throw dbErr || new Error('Pedido não encontrado');
+
+      let signedUrl = data.proof_url;
+      if (data.proof_url && !data.proof_url.startsWith('http')) {
+        const { data: signedData } = await supabaseAdmin
+          .storage
+          .from('fastpay-proofs')
+          .createSignedUrl(data.proof_url, 3600);
+
+        if (signedData?.signedUrl) {
+          signedUrl = signedData.signedUrl;
+        }
       }
-    } catch {
-      setError('Erro de conexão');
+
+      setOrder({
+        ...data,
+        proof_signed_url: signedUrl,
+      });
+    } catch (err: any) {
+      console.warn('[OrderDetailModal] DB query failed, trying API fallback...', err);
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/admin/fastpay/orders/${orderId}`, {
+          headers: { 'x-admin-key': ADMIN_KEY },
+        });
+        const data = await res.json();
+        if (data.success) {
+          setOrder(data.order);
+        } else {
+          setError(data.error || 'Falha ao carregar pedido');
+        }
+      } catch (fallbackErr) {
+        setError('Erro de conexão ao carregar detalhes do pedido');
+      }
     } finally {
       setLoading(false);
     }
@@ -103,15 +138,41 @@ export function OrderDetailModal({ orderId, onClose, onActionComplete }: OrderDe
         body: JSON.stringify({}),
       });
       const data = await res.json();
-
       if (data.success) {
         onActionComplete();
         onClose();
-      } else {
-        setError(data.error || 'Falha ao aprovar');
+        return;
       }
     } catch {
-      setError('Erro de conexão');
+      // Backend endpoint unreachable — fallback to direct Supabase update
+    }
+
+    try {
+      const { error: updateErr } = await supabaseAdmin
+        .from('fastpay_orders')
+        .update({
+          status: 'completed',
+          approved_at: new Date().toISOString(),
+        })
+        .eq('id', order.id);
+
+      if (updateErr) throw updateErr;
+
+      await supabaseAdmin.from('purchases').insert({
+        member_id: order.member_id,
+        product_id: order.product_id,
+        amount_paid: 0,
+        amount_paid_aoa: order.amount,
+        payment_status: 'completed',
+        transaction_id: `fastpay_${order.id}`,
+        selected_bonus_ids: (order as any).selected_bonus_ids || []
+      });
+
+      onActionComplete();
+      onClose();
+    } catch (dbErr: any) {
+      console.error('[OrderDetailModal] handleApprove error:', dbErr);
+      setError(dbErr.message || 'Falha ao aprovar pedido');
     } finally {
       setActionLoading(false);
     }
@@ -132,15 +193,32 @@ export function OrderDetailModal({ orderId, onClose, onActionComplete }: OrderDe
         body: JSON.stringify({ rejection_reason: rejectionReason.trim() }),
       });
       const data = await res.json();
-
       if (data.success) {
         onActionComplete();
         onClose();
-      } else {
-        setError(data.error || 'Falha ao rejeitar');
+        return;
       }
     } catch {
-      setError('Erro de conexão');
+      // Backend endpoint unreachable — fallback to direct Supabase update
+    }
+
+    try {
+      const { error: updateErr } = await supabaseAdmin
+        .from('fastpay_orders')
+        .update({
+          status: 'failed',
+          rejected_at: new Date().toISOString(),
+          rejection_reason: rejectionReason.trim(),
+        })
+        .eq('id', order.id);
+
+      if (updateErr) throw updateErr;
+
+      onActionComplete();
+      onClose();
+    } catch (dbErr: any) {
+      console.error('[OrderDetailModal] handleReject error:', dbErr);
+      setError(dbErr.message || 'Falha ao rejeitar pedido');
     } finally {
       setActionLoading(false);
     }

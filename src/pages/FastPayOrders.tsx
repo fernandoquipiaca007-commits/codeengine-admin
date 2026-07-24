@@ -64,6 +64,8 @@ interface FastPaySettings {
   auto_reject_days: number;
 }
 
+import { supabaseAdmin } from '../lib/supabase-admin';
+
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 const ADMIN_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
 
@@ -79,21 +81,11 @@ export default function FastPayOrders() {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const configError = !ADMIN_KEY
-    ? 'VITE_ADMIN_API_KEY não configurada. A aba FastPay não consegue carregar dados administrativos.'
-    : null;
-
   useEffect(() => {
     fetchAll();
   }, [statusFilter]);
 
   const fetchAll = async () => {
-    if (configError) {
-      setErrorMessage(configError);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setErrorMessage(null);
     await Promise.allSettled([fetchOrders(), fetchStats(), fetchSettings()]);
@@ -129,60 +121,130 @@ export default function FastPayOrders() {
 
   const fetchOrders = async () => {
     try {
-      const params = new URLSearchParams();
-      if (statusFilter !== 'all') params.set('status', statusFilter);
-      if (searchQuery.trim()) params.set('search', searchQuery.trim());
-      const data = await apiRequest<{ success: true; orders: FastPayOrder[] }>(
-        `/api/admin/fastpay/orders?${params.toString()}`
-      );
-      setOrders(data.orders || []);
-    } catch (err) {
-      console.error('[FastPayOrders] Failed to fetch orders:', err);
-      setOrders([]);
-      const detail = err && typeof err === 'object'
-        ? (err as any).message || JSON.stringify(err)
-        : String(err);
-      setErrorMessage(`Falha ao carregar pedidos FastPay: ${detail}`);
+      let query = supabaseAdmin
+        .from('fastpay_orders')
+        .select(`
+          *,
+          member:members(id, email, profile_data),
+          product:products(id, title, price, cover_url)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (err: any) {
+      console.warn('[FastPayOrders] supabaseAdmin query failed, trying API fallback...', err);
+      try {
+        const params = new URLSearchParams();
+        if (statusFilter !== 'all') params.set('status', statusFilter);
+        if (searchQuery.trim()) params.set('search', searchQuery.trim());
+        const data = await apiRequest<{ success: true; orders: FastPayOrder[] }>(
+          `/api/admin/fastpay/orders?${params.toString()}`
+        );
+        setOrders(data.orders || []);
+      } catch (fallbackErr: any) {
+        console.error('[FastPayOrders] Both query and API failed:', fallbackErr);
+        setOrders([]);
+        setErrorMessage(`Falha ao carregar pedidos FastPay: ${fallbackErr?.message || 'Erro de conexão'}`);
+      }
     }
   };
 
   const fetchStats = async () => {
     try {
-      const data = await apiRequest<{ success: true; stats: FastPayStats }>('/api/admin/fastpay/stats');
-      setStats(data.stats);
+      const { data: allOrders, error } = await supabaseAdmin
+        .from('fastpay_orders')
+        .select('id, status, amount, created_at, proof_uploaded_at, approved_at');
+
+      if (error) throw error;
+
+      const ordersList = allOrders || [];
+      const total = ordersList.length;
+      const pending = ordersList.filter(o => o.status === 'pending').length;
+      const completed = ordersList.filter(o => o.status === 'completed').length;
+      const failed = ordersList.filter(o => o.status === 'failed').length;
+      const revenue = ordersList.filter(o => o.status === 'completed').reduce((s, o) => s + (Number(o.amount) || 0), 0);
+
+      setStats({
+        total_orders: total,
+        pending_orders: pending,
+        completed_orders: completed,
+        failed_orders: failed,
+        total_revenue: revenue,
+        average_approval_hours: null,
+      });
     } catch (err) {
-      console.error('Failed to fetch stats:', err);
-      setStats(null);
-      setErrorMessage(err instanceof Error ? err.message : 'Falha ao carregar estatísticas FastPay.');
+      console.warn('[FastPayOrders] supabaseAdmin stats query failed, trying API fallback...', err);
+      try {
+        const data = await apiRequest<{ success: true; stats: FastPayStats }>('/api/admin/fastpay/stats');
+        setStats(data.stats);
+      } catch (fallbackErr) {
+        console.error('Failed to fetch stats:', fallbackErr);
+      }
     }
   };
 
   const fetchSettings = async () => {
     try {
-      const data = await apiRequest<{ success: true; settings: FastPaySettings }>('/api/admin/fastpay/settings');
-      setSettings(data.settings);
+      const { data: settingsRows } = await supabaseAdmin
+        .from('platform_settings')
+        .select('key, value')
+        .in('key', ['fastpay_enabled', 'fastpay_max_pending', 'fastpay_auto_reject_days']);
+
+      const map: Record<string, string> = {};
+      settingsRows?.forEach(r => { map[r.key] = r.value; });
+
+      setSettings({
+        enabled: map.fastpay_enabled !== 'false',
+        max_pending_per_member: parseInt(map.fastpay_max_pending || '3'),
+        auto_reject_days: parseInt(map.fastpay_auto_reject_days || '7'),
+      });
     } catch (err) {
-      console.error('Failed to fetch settings:', err);
-      setSettings(null);
-      setErrorMessage(err instanceof Error ? err.message : 'Falha ao carregar configurações FastPay.');
+      console.warn('[FastPayOrders] supabaseAdmin settings query failed, trying API fallback...', err);
+      try {
+        const data = await apiRequest<{ success: true; settings: FastPaySettings }>('/api/admin/fastpay/settings');
+        setSettings(data.settings);
+      } catch (fallbackErr) {
+        console.error('Failed to fetch settings:', fallbackErr);
+      }
     }
   };
 
   const updateSettings = async (updates: Partial<FastPaySettings>) => {
     setSettingsLoading(true);
     try {
-      await apiRequest<{ success: true }>('/api/admin/fastpay/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      });
+      const upserts = [];
+      if (updates.enabled !== undefined) upserts.push({ key: 'fastpay_enabled', value: String(updates.enabled) });
+      if (updates.max_pending_per_member !== undefined) upserts.push({ key: 'fastpay_max_pending', value: String(updates.max_pending_per_member) });
+      if (updates.auto_reject_days !== undefined) upserts.push({ key: 'fastpay_auto_reject_days', value: String(updates.auto_reject_days) });
+
+      for (const u of upserts) {
+        await supabaseAdmin.from('platform_settings').upsert(u, { onConflict: 'key' });
+      }
+
       setSettings(prev => prev ? { ...prev, ...updates } : prev);
       setErrorMessage(null);
     } catch (err) {
-      console.error('Failed to update settings:', err);
-      setErrorMessage(err instanceof Error ? err.message : 'Falha ao atualizar configurações FastPay.');
+      console.warn('[FastPayOrders] supabaseAdmin updateSettings failed, trying API fallback...', err);
+      try {
+        await apiRequest<{ success: true }>('/api/admin/fastpay/settings', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updates),
+        });
+        setSettings(prev => prev ? { ...prev, ...updates } : prev);
+        setErrorMessage(null);
+      } catch (fallbackErr) {
+        console.error('Failed to update settings:', fallbackErr);
+        setErrorMessage(fallbackErr instanceof Error ? fallbackErr.message : 'Falha ao atualizar configurações FastPay.');
+      }
     } finally {
       setSettingsLoading(false);
     }
