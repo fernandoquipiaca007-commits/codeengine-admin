@@ -61,7 +61,8 @@ export async function fetchAdminAnalytics(): Promise<AdminAnalyticsSnapshot> {
   const monthStart = last30DaysStartIso();
 
   const [
-    purchasesRes,
+    purchasesAllTimeRes,
+    purchasesRecentRes,
     membersRes,
     productsRes,
     downloadsRes,
@@ -70,6 +71,7 @@ export async function fetchAdminAnalytics(): Promise<AdminAnalyticsSnapshot> {
     recentViewsRes,
     newsViewsRes,
   ] = await Promise.all([
+    // All-time: para calcular Receita Total e Vendas Totais reais
     supabaseAdmin
       .from('purchases')
       .select(
@@ -84,9 +86,14 @@ export async function fetchAdminAnalytics(): Promise<AdminAnalyticsSnapshot> {
         products ( title, is_free )
       `
       )
-      .gte('purchase_date', monthStart)
       .eq('payment_status', 'completed')
       .order('purchase_date', { ascending: false }),
+    // Últimos 30 dias: para gráfico diário e métricas de "hoje"
+    supabaseAdmin
+      .from('purchases')
+      .select('id, amount_paid, payment_status, access_type, purchase_date, product_id, transaction_id')
+      .eq('payment_status', 'completed')
+      .gte('purchase_date', monthStart),
     supabaseAdmin.from('members').select('id', { count: 'exact', head: true }),
     supabaseAdmin.from('products').select('id', { count: 'exact', head: true }),
     supabaseAdmin.from('downloads').select('id', { count: 'exact', head: true }),
@@ -103,7 +110,7 @@ export async function fetchAdminAnalytics(): Promise<AdminAnalyticsSnapshot> {
   ]);
 
   const criticalErrors: string[] = [];
-  if (purchasesRes.error) criticalErrors.push(`purchases: ${purchasesRes.error.message}`);
+  if (purchasesAllTimeRes.error) criticalErrors.push(`purchases: ${purchasesAllTimeRes.error.message}`);
   if (membersRes.error) criticalErrors.push(`members: ${membersRes.error.message}`);
   if (productsRes.error) criticalErrors.push(`products: ${productsRes.error.message}`);
   if (criticalErrors.length > 0) {
@@ -117,33 +124,50 @@ export async function fetchAdminAnalytics(): Promise<AdminAnalyticsSnapshot> {
   if (recentViewsRes.error) dataWarnings.push(`recent_views: ${recentViewsRes.error.message}`);
   if (newsViewsRes.error) dataWarnings.push(`news_views: ${newsViewsRes.error.message}`);
 
-  const purchases = purchasesRes.data ?? [];
-  // Treat purchases with access_type='free'|'paid' as effectively completed
-  const completed = purchases.map((p: any) => ({
+  // All-time purchases: para totais reais (Receita Total, Vendas Totais)
+  const allTimePurchases = (purchasesAllTimeRes.data ?? []).map((p: any) => ({
     ...p,
     isAoa: typeof p.transaction_id === 'string' && p.transaction_id.startsWith('fastpay_')
   })).filter((p) => p.payment_status === 'completed');
 
-  const completedUsd = completed.filter(p => !p.isAoa);
-  const completedAoa = completed.filter(p => p.isAoa);
+  // Últimos 30 dias: para gráfico e métricas de hoje
+  const recentPurchases = (purchasesRecentRes.data ?? []).map((p: any) => ({
+    ...p,
+    isAoa: typeof p.transaction_id === 'string' && p.transaction_id.startsWith('fastpay_')
+  })).filter((p) => p.payment_status === 'completed');
 
-  // USD calculations
+  // Usar all-time para totais
+  const completedUsd = allTimePurchases.filter(p => !p.isAoa);
+  const completedAoa = allTimePurchases.filter(p => p.isAoa);
+
+  // Usar recentes para métricas de hoje
+  const recentUsd = recentPurchases.filter(p => !p.isAoa);
+  const recentAoa = recentPurchases.filter(p => p.isAoa);
+
+  // Alias para compatibilidade com o restante do código
+  const completed = allTimePurchases;
+
+  // USD calculations — all-time totals
   const totalRevenue = completedUsd.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
   const totalSales = completedUsd.length;
   const avgOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-  const todayCompletedUsd = completedUsd.filter((p) => p.purchase_date >= todayStart);
+  // Today metrics — usar dados recentes
+  const todayCompletedUsd = recentUsd.filter((p) => p.purchase_date >= todayStart);
   const salesToday = todayCompletedUsd.length;
   const revenueToday = todayCompletedUsd.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
 
-  // AOA calculations
+  // AOA calculations — all-time totals
   const aoaRevenue = completedAoa.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
   const aoaSales = completedAoa.length;
   const avgOrderValueAoa = aoaSales > 0 ? aoaRevenue / aoaSales : 0;
 
-  const todayCompletedAoa = completedAoa.filter((p) => p.purchase_date >= todayStart);
+  const todayCompletedAoa = recentAoa.filter((p) => p.purchase_date >= todayStart);
   const aoaSalesToday = todayCompletedAoa.length;
   const aoaRevenueToday = todayCompletedAoa.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+
+  // Gráfico diário — usar dados recentes (últimos 30 dias)
+  const chartCompleted = recentUsd;
 
   const visitorsToday =
     (recentViewsRes.error ? 0 : recentViewsRes.count ?? 0) +
@@ -180,7 +204,7 @@ export async function fetchAdminAnalytics(): Promise<AdminAnalyticsSnapshot> {
     d.setDate(d.getDate() - i);
     dayBuckets.set(formatDayKey(d), { revenue: 0, sales: 0 });
   }
-  for (const p of completedUsd) {
+  for (const p of chartCompleted) {
     const key = p.purchase_date.slice(0, 10);
     if (!dayBuckets.has(key)) dayBuckets.set(key, { revenue: 0, sales: 0 });
     const bucket = dayBuckets.get(key)!;
